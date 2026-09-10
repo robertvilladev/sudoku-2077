@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+  HARDCORE
+}
+
+model Puzzle {
+  id              String          @id @default(cuid())
+  givens          String
+  solution        String
+  difficulty      Difficulty
+  difficultyScore Int
+  techniques      String[]
+  givensCount     Int
+  createdAt       DateTime        @default(now())
+  servedCount     Int             @default(0)
+  dailyChallenge  DailyChallenge?
+
+  @@index([difficulty, servedCount])
+}
+
+model DailyChallenge {
+  id       String   @id @default(cuid())
+  date     DateTime @unique @db.Date
+  puzzleId String   @unique
+  puzzle   Puzzle   @relation(fields: [puzzleId], references: [id])
+}
