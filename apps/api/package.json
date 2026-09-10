@@ -14,9 +14,12 @@
     "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
     "@fastify/cors": "^11.3.0",
     "@fastify/helmet": "^13.1.1",
     "@fastify/rate-limit": "^11.2.0",
+    "@fastify/swagger": "^9.8.1",
+    "@fastify/swagger-ui": "^6.1.1",
     "@prisma/client": "^5.20.0",
     "@sudoku-2077/api-types": "*",
     "@sudoku-2077/sudoku-core": "*",
