@@ -1,10 +1,13 @@
 import "dotenv/config";
 import Fastify from "fastify";
 import { env } from "./config/env.js";
+import { registerErrorHandler } from "./errors.js";
 import { dailyChallengeRoutes } from "./routes/dailyChallenge.js";
 import { puzzleRoutes } from "./routes/puzzles.js";
 
 const app = Fastify({ logger: true });
+
+registerErrorHandler(app);
 
 app.get("/health", async () => ({ status: "ok" }));
 await app.register(dailyChallengeRoutes);
