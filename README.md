@@ -32,3 +32,9 @@ npm run dev:api                          # starts the API on :3000
 - `GET /api/puzzles?difficulty=easy|medium|hard|hardcore` — one puzzle from that tier's pool, givens only
 - `GET /api/puzzles/:id` — a specific puzzle by id, givens only
 - `POST /api/puzzles/:id/validate` — `{ board: <81-char string> }` → `{ correct, completed }`, checked server-side so the solution never has to reach the client
+- `GET /docs` — browsable OpenAPI contract, generated from `@sudoku-2077/api-types`'s zod schemas
+
+## Deployment notes
+
+- **Migrations:** use `prisma migrate dev` locally (creates + applies a new migration interactively). CI/CD environments must use `prisma migrate deploy` instead — it only applies existing migration files and never generates new ones, which is what `.github/workflows/ci.yml` does against its ephemeral Postgres.
+- **Connection pooling:** `apps/api` uses a single long-lived `PrismaClient` (see `src/db/client.ts`), which is correct for a single long-running process. If the API ever moves to a serverless or multi-instance host, add PgBouncer (or the host's equivalent) in front of Postgres first — otherwise each instance/invocation opens its own pool and Postgres runs out of connections under load.
