@@ -26,6 +26,7 @@ export async function buildApp() {
   await app.register(rateLimit, { max: env.RATE_LIMIT_MAX, timeWindow: "1 minute" });
   // zod-to-openapi (openapi3-ts types) and @fastify/swagger (openapi-types) disagree on nominal
   // typing for an otherwise identical OpenAPI 3 document shape; the document itself is valid.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see comment above
   await app.register(swagger, { mode: "static", specification: { document: buildOpenApiDocument() as any } });
   await app.register(swaggerUi, { routePrefix: "/docs" });
 
