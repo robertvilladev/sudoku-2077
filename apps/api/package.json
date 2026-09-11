@@ -8,11 +8,18 @@
     "build": "tsc -b",
     "start": "node dist/server.js",
     "typecheck": "tsc -b",
+    "test": "vitest run",
     "replenish": "tsx src/jobs/replenishPool.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/helmet": "^13.1.1",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/swagger": "^9.8.1",
+    "@fastify/swagger-ui": "^6.1.1",
     "@prisma/client": "^5.20.0",
     "@sudoku-2077/api-types": "*",
     "@sudoku-2077/sudoku-core": "*",
@@ -24,6 +31,7 @@
     "@types/node": "^22.20.2",
     "prisma": "^5.20.0",
     "tsx": "^4.19.1",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
   }
 }
