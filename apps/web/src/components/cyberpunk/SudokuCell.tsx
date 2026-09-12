@@ -4,6 +4,8 @@ import { useSettings } from "../../lib/settings/SettingsContext.js";
 import { GlitchText } from "./GlitchText.js";
 
 export interface SudokuCellProps {
+  row: number;
+  col: number;
   value: number;
   notes?: Set<number>;
   isGiven: boolean;
@@ -17,6 +19,8 @@ export interface SudokuCellProps {
 }
 
 export function SudokuCell({
+  row,
+  col,
   value,
   notes,
   isGiven,
@@ -34,7 +38,7 @@ export function SudokuCell({
     <button
       type="button"
       role="gridcell"
-      aria-label={`Cell ${value === 0 ? "empty" : value}`}
+      aria-label={`Row ${row + 1}, column ${col + 1}, ${value === 0 ? "empty" : value}`}
       aria-selected={isSelected}
       data-state={isConflict ? "conflict" : isGiven ? "given" : "default"}
       onClick={onSelect}

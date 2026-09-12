@@ -40,15 +40,24 @@ function PuzzleBoard({
   const timer = useGameTimer();
   const settings = useSettings();
   const [isPaused, setIsPaused] = useState(false);
+  const [validatedBoardString, setValidatedBoardString] = useState<string | null>(null);
 
   useEffect(() => {
-    if (board.isComplete && !validate.isPending && !validate.data) {
+    // Keyed on boardString rather than "have we ever validated" so a board that was complete-but-wrong
+    // gets re-checked (and can still win) once the player edits it into a new complete state.
+    if (board.isComplete && board.boardString !== validatedBoardString && !validate.isPending) {
+      setValidatedBoardString(board.boardString);
       validate.mutate(board.boardString);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire validation once per completion, not on every validate identity change
-  }, [board.isComplete, board.boardString]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire validation once per unique complete boardString, not on every validate identity change
+  }, [board.isComplete, board.boardString, validatedBoardString]);
 
   const isWon = validate.data?.completed === true && validate.data.correct === true;
+
+  useEffect(() => {
+    if (isWon) timer.pause();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- timer.pause is stable; timer itself is a fresh object every render
+  }, [isWon]);
 
   return (
     <PageFlicker>

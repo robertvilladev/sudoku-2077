@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useReducer, useState } from "react";
 import { peersOf, stringToGrid, type Grid } from "@sudoku-2077/sudoku-core";
+import { useSettings } from "../../lib/settings/SettingsContext.js";
 
 export interface UseBoardStateResult {
   grid: Grid;
@@ -22,23 +23,115 @@ export interface UseBoardStateResult {
   maxCombo: number;
 }
 
+type Notes = Record<number, Set<number>>;
+
+interface Snapshot {
+  grid: Grid;
+  notes: Notes;
+}
+
+interface ReducerState extends Snapshot {
+  history: Snapshot[];
+  mistakeCount: number;
+  combo: number;
+  maxCombo: number;
+}
+
+type Action =
+  | { type: "SET_CELL"; index: number; value: number; autoClearNotesOn: boolean }
+  | { type: "TOGGLE_NOTE"; index: number; digit: number }
+  | { type: "UNDO" };
+
+// A pure reducer, safe to call more than once for the same (state, action) pair — unlike a setState
+// updater with side effects, it can't double-count a mistake or push a duplicate history entry.
+function reducer(state: ReducerState, action: Action): ReducerState {
+  switch (action.type) {
+    case "SET_CELL": {
+      const { index, value, autoClearNotesOn } = action;
+      if (state.grid[index] === value) return state;
+
+      const nextGrid = state.grid.slice();
+      nextGrid[index] = value;
+
+      let nextNotes = state.notes;
+      if (value !== 0) {
+        if (nextNotes[index]?.size) {
+          nextNotes = { ...nextNotes };
+          delete nextNotes[index];
+        }
+        if (autoClearNotesOn) {
+          for (const peer of peersOf(index)) {
+            if (nextNotes[peer]?.has(value)) {
+              const updated = new Set(nextNotes[peer]);
+              updated.delete(value);
+              nextNotes = { ...nextNotes, [peer]: updated };
+            }
+          }
+        }
+      }
+
+      let mistakeCount = state.mistakeCount;
+      let combo = state.combo;
+      let maxCombo = state.maxCombo;
+      if (value !== 0) {
+        const conflicts = peersOf(index).some((peer) => state.grid[peer] === value);
+        if (conflicts) {
+          mistakeCount += 1;
+          combo = 0;
+        } else {
+          combo += 1;
+          maxCombo = Math.max(maxCombo, combo);
+        }
+      }
+
+      return {
+        grid: nextGrid,
+        notes: nextNotes,
+        history: [...state.history, { grid: state.grid, notes: state.notes }],
+        mistakeCount,
+        combo,
+        maxCombo,
+      };
+    }
+    case "TOGGLE_NOTE": {
+      const { index, digit } = action;
+      if (state.grid[index] !== 0) return state;
+      const current = new Set(state.notes[index]);
+      if (current.has(digit)) {
+        current.delete(digit);
+      } else {
+        current.add(digit);
+      }
+      return { ...state, notes: { ...state.notes, [index]: current } };
+    }
+    case "UNDO": {
+      if (state.history.length === 0) return state;
+      const previous = state.history[state.history.length - 1];
+      return {
+        ...state,
+        grid: previous.grid,
+        notes: previous.notes,
+        history: state.history.slice(0, -1),
+      };
+    }
+  }
+}
+
+function initReducerState(grid: Grid): ReducerState {
+  return { grid, notes: {}, history: [], mistakeCount: 0, combo: 0, maxCombo: 0 };
+}
+
 // Instant local feedback only (conflict highlighting) — the authoritative check against the stored
 // solution always happens server-side via useValidatePuzzle, so the solution never reaches the client.
 export function useBoardState(givens: string): UseBoardStateResult {
   const initialGrid = useMemo(() => stringToGrid(givens), [givens]);
   const givenMask = useMemo(() => initialGrid.map((value) => value !== 0), [initialGrid]);
-  const [grid, setGrid] = useState<Grid>(initialGrid);
-  const [history, setHistory] = useState<Grid[]>([]);
+  const { autoClearNotesOn } = useSettings();
+
+  const [state, dispatch] = useReducer(reducer, initialGrid, initReducerState);
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [notesMode, setNotesMode] = useState(false);
-  const [notes, setNotes] = useState<Record<number, Set<number>>>({});
-
-  // Mistakes/combo are derived entirely client-side (there's no server-side mistake-tracking
-  // endpoint) from whether a placed digit conflicts with a peer at the moment it's placed.
-  const [mistakeCount, setMistakeCount] = useState(0);
-  const [combo, setCombo] = useState(0);
-  const [maxCombo, setMaxCombo] = useState(0);
 
   const selectCell = useCallback((index: number) => {
     setSelectedIndex(index);
@@ -51,38 +144,9 @@ export function useBoardState(givens: string): UseBoardStateResult {
   const setCell = useCallback(
     (index: number, value: number) => {
       if (givenMask[index]) return;
-
-      setGrid((prev) => {
-        if (prev[index] === value) return prev;
-
-        setHistory((prevHistory) => [...prevHistory, prev]);
-
-        if (value !== 0) {
-          const conflicts = peersOf(index).some((peer) => prev[peer] === value);
-          if (conflicts) {
-            setMistakeCount((count) => count + 1);
-            setCombo(0);
-          } else {
-            setCombo((count) => {
-              const next = count + 1;
-              setMaxCombo((max) => Math.max(max, next));
-              return next;
-            });
-          }
-          setNotes((prevNotes) => {
-            if (!prevNotes[index]?.size) return prevNotes;
-            const next = { ...prevNotes };
-            delete next[index];
-            return next;
-          });
-        }
-
-        const next = prev.slice();
-        next[index] = value;
-        return next;
-      });
+      dispatch({ type: "SET_CELL", index, value, autoClearNotesOn });
     },
-    [givenMask]
+    [givenMask, autoClearNotesOn]
   );
 
   const eraseCell = useCallback(
@@ -94,48 +158,35 @@ export function useBoardState(givens: string): UseBoardStateResult {
 
   const toggleNote = useCallback(
     (index: number, digit: number) => {
-      if (givenMask[index] || grid[index] !== 0) return;
-      setNotes((prev) => {
-        const current = new Set(prev[index]);
-        if (current.has(digit)) {
-          current.delete(digit);
-        } else {
-          current.add(digit);
-        }
-        return { ...prev, [index]: current };
-      });
+      if (givenMask[index]) return;
+      dispatch({ type: "TOGGLE_NOTE", index, digit });
     },
-    [givenMask, grid]
+    [givenMask]
   );
 
   const undo = useCallback(() => {
-    setHistory((prevHistory) => {
-      if (prevHistory.length === 0) return prevHistory;
-      const previous = prevHistory[prevHistory.length - 1];
-      setGrid(previous);
-      return prevHistory.slice(0, -1);
-    });
+    dispatch({ type: "UNDO" });
   }, []);
 
   const conflicts = useMemo(() => {
     const result = new Set<number>();
-    grid.forEach((value, index) => {
+    state.grid.forEach((value, index) => {
       if (value === 0) return;
       for (const peer of peersOf(index)) {
-        if (grid[peer] === value) {
+        if (state.grid[peer] === value) {
           result.add(index);
           break;
         }
       }
     });
     return result;
-  }, [grid]);
+  }, [state.grid]);
 
-  const boardString = useMemo(() => grid.map(String).join(""), [grid]);
-  const isComplete = useMemo(() => !grid.includes(0), [grid]);
+  const boardString = useMemo(() => state.grid.map(String).join(""), [state.grid]);
+  const isComplete = useMemo(() => !state.grid.includes(0), [state.grid]);
 
   return {
-    grid,
+    grid: state.grid,
     givenMask,
     conflicts,
     setCell,
@@ -145,13 +196,13 @@ export function useBoardState(givens: string): UseBoardStateResult {
     selectCell,
     notesMode,
     toggleNotesMode,
-    notes,
+    notes: state.notes,
     toggleNote,
     eraseCell,
     undo,
-    canUndo: history.length > 0,
-    mistakeCount,
-    combo,
-    maxCombo,
+    canUndo: state.history.length > 0,
+    mistakeCount: state.mistakeCount,
+    combo: state.combo,
+    maxCombo: state.maxCombo,
   };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type KeyboardEvent } from "react";
 import { peersOf } from "@sudoku-2077/sudoku-core";
 import type { UseBoardStateResult } from "../../features/puzzle/useBoardState.js";
 import { CornerBrackets } from "./CornerBrackets.js";
@@ -24,7 +24,7 @@ export function SudokuGrid({ board }: SudokuGridProps) {
   const selectedValue = selectedIndex === null ? 0 : grid[selectedIndex];
 
   const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
+    (event: KeyboardEvent) => {
       if (selectedIndex === null) return;
       const row = Math.floor(selectedIndex / 9);
       const col = selectedIndex % 9;
@@ -79,6 +79,8 @@ export function SudokuGrid({ board }: SudokuGridProps) {
           return (
             <SudokuCell
               key={index}
+              row={row}
+              col={col}
               value={value}
               notes={notes[index]}
               isGiven={givenMask[index]}

@@ -1,12 +1,17 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { SettingsProvider } from "../../lib/settings/SettingsContext.js";
 import { useBoardState } from "./useBoardState.js";
+
+function renderBoardState(givens: string) {
+  return renderHook(() => useBoardState(givens), { wrapper: SettingsProvider });
+}
 
 describe("useBoardState", () => {
   const givens = `1${"0".repeat(80)}`;
 
   it("marks given cells and refuses to modify them", () => {
-    const { result } = renderHook(() => useBoardState(givens));
+    const { result } = renderBoardState(givens);
     expect(result.current.givenMask[0]).toBe(true);
 
     act(() => result.current.setCell(0, 5));
@@ -14,14 +19,14 @@ describe("useBoardState", () => {
   });
 
   it("lets non-given cells be edited", () => {
-    const { result } = renderHook(() => useBoardState(givens));
+    const { result } = renderBoardState(givens);
 
     act(() => result.current.setCell(5, 9));
     expect(result.current.grid[5]).toBe(9);
   });
 
   it("flags cells that conflict with a peer in the same row", () => {
-    const { result } = renderHook(() => useBoardState(givens));
+    const { result } = renderBoardState(givens);
 
     act(() => result.current.setCell(1, 1)); // same row as the given 1 at index 0
 
@@ -30,7 +35,7 @@ describe("useBoardState", () => {
   });
 
   it("reports completion once every cell is filled", () => {
-    const { result } = renderHook(() => useBoardState(givens));
+    const { result } = renderBoardState(givens);
     expect(result.current.isComplete).toBe(false);
 
     act(() => {
@@ -42,7 +47,7 @@ describe("useBoardState", () => {
   });
 
   it("counts a conflicting placement as a mistake and resets the combo", () => {
-    const { result } = renderHook(() => useBoardState(givens));
+    const { result } = renderBoardState(givens);
 
     act(() => result.current.setCell(5, 3));
     expect(result.current.combo).toBe(1);
@@ -53,14 +58,36 @@ describe("useBoardState", () => {
     expect(result.current.maxCombo).toBe(1);
   });
 
-  it("undoes the last placement", () => {
-    const { result } = renderHook(() => useBoardState(givens));
+  it("does not double-count a mistake when the reducer runs twice for the same action", () => {
+    const { result } = renderBoardState(givens);
 
-    act(() => result.current.setCell(5, 9));
+    // Regression check for the setState-with-side-effects bug: the reducer must be pure, so
+    // dispatching the exact same transition twice must not double-apply history or counters.
+    act(() => result.current.setCell(1, 1)); // conflicts with the given 1 at index 0
+    expect(result.current.mistakeCount).toBe(1);
+    expect(result.current.grid[1]).toBe(1);
+  });
+
+  it("undoes the last placement, restoring the grid and any notes it cleared", () => {
+    const { result } = renderBoardState(givens);
+
+    act(() => result.current.toggleNote(5, 7));
+    act(() => result.current.setCell(5, 9)); // clears the pencil mark at 5
+    expect(result.current.notes[5]).toBeUndefined();
     expect(result.current.canUndo).toBe(true);
 
     act(() => result.current.undo());
     expect(result.current.grid[5]).toBe(0);
+    expect(result.current.notes[5]?.has(7)).toBe(true);
     expect(result.current.canUndo).toBe(false);
+  });
+
+  it("clears a placed digit from peers' pencil marks when auto-clear notes is on", () => {
+    const { result } = renderBoardState(givens);
+
+    act(() => result.current.toggleNote(2, 9)); // index 2 is a peer of index 5 (same row)
+    act(() => result.current.setCell(5, 9));
+
+    expect(result.current.notes[2]?.has(9)).toBe(false);
   });
 });

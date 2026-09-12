@@ -23,18 +23,18 @@ function renderGrid() {
 describe("SudokuGrid", () => {
   it("renders given cells as read-only and non-given cells as empty", () => {
     renderGrid();
-    expect(screen.getByLabelText("Cell 1")).toHaveAttribute("data-state", "given");
-    expect(screen.getAllByLabelText("Cell empty").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Row 1, column 1, 1")).toHaveAttribute("data-state", "given");
+    expect(screen.getAllByLabelText(/, empty$/).length).toBeGreaterThan(0);
   });
 
   it("lets a selected non-given cell accept a digit via the keyboard", async () => {
     const user = userEvent.setup();
     renderGrid();
 
-    await user.click(screen.getAllByLabelText("Cell empty")[0]);
+    await user.click(screen.getAllByLabelText(/, empty$/)[0]);
     await user.keyboard("9");
 
-    expect(screen.getByLabelText("Cell 9")).toBeInTheDocument();
+    expect(screen.getByLabelText("Row 1, column 2, 9")).toBeInTheDocument();
   });
 
   it("marks a cell that conflicts with a peer", async () => {

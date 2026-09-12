@@ -2,7 +2,7 @@ const MAX_MISTAKES = 3;
 
 export function MistakePips({ count }: { count: number }) {
   return (
-    <div className="flex gap-1" aria-label={`${count} of ${MAX_MISTAKES} mistakes used`}>
+    <div role="status" className="flex gap-1" aria-label={`${count} of ${MAX_MISTAKES} mistakes used`}>
       {Array.from({ length: MAX_MISTAKES }, (_, i) => (
         <span
           key={i}

@@ -29,22 +29,24 @@ const buttonVariants = cva(
   }
 );
 
-function Button({
-  className,
-  variant = "primary",
-  size = "default",
-  asChild = false,
-  ...props
-}: Omit<
+type ButtonProps = Omit<
   React.ComponentProps<"button">,
   "onAnimationStart" | "onAnimationEnd" | "onDrag" | "onDragStart" | "onDragEnd"
 > &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
-  }) {
+  };
+
+// React 18 (unlike 19) doesn't forward `ref` as a plain prop to function components — an explicit
+// forwardRef is required so Radix's `asChild`/Slot cloning (e.g. DialogClose) can attach its ref.
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { className, variant = "primary", size = "default", asChild = false, ...props },
+  ref
+) {
   if (asChild) {
     return (
       <Slot.Root
+        ref={ref}
         data-slot="button"
         data-variant={variant}
         data-size={size}
@@ -56,6 +58,7 @@ function Button({
 
   return (
     <motion.button
+      ref={ref}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       data-slot="button"
@@ -65,6 +68,6 @@ function Button({
       {...props}
     />
   );
-}
+});
 
 export { Button, buttonVariants };
