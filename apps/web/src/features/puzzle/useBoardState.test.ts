@@ -40,4 +40,27 @@ describe("useBoardState", () => {
     });
     expect(result.current.isComplete).toBe(true);
   });
+
+  it("counts a conflicting placement as a mistake and resets the combo", () => {
+    const { result } = renderHook(() => useBoardState(givens));
+
+    act(() => result.current.setCell(5, 3));
+    expect(result.current.combo).toBe(1);
+
+    act(() => result.current.setCell(1, 1)); // same row as the given 1 at index 0 — conflicts
+    expect(result.current.mistakeCount).toBe(1);
+    expect(result.current.combo).toBe(0);
+    expect(result.current.maxCombo).toBe(1);
+  });
+
+  it("undoes the last placement", () => {
+    const { result } = renderHook(() => useBoardState(givens));
+
+    act(() => result.current.setCell(5, 9));
+    expect(result.current.canUndo).toBe(true);
+
+    act(() => result.current.undo());
+    expect(result.current.grid[5]).toBe(0);
+    expect(result.current.canUndo).toBe(false);
+  });
 });
