@@ -1,10 +1,12 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { MotionConfig } from "motion/react";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App.js";
 import { queryClient } from "./lib/queryClient.js";
 import { AuthProvider } from "./lib/auth/AuthContext.js";
+import { SettingsProvider } from "./lib/settings/SettingsContext.js";
 import "./index.css";
 
 const container = document.getElementById("root");
@@ -15,11 +17,15 @@ if (!container) {
 createRoot(container).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </AuthProvider>
+      <MotionConfig reducedMotion="user">
+        <SettingsProvider>
+          <AuthProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </AuthProvider>
+        </SettingsProvider>
+      </MotionConfig>
     </QueryClientProvider>
   </StrictMode>
 );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DifficultyTier } from "@sudoku-2077/api-types";
+import { DifficultyTierCard } from "@/components/cyberpunk/DifficultyTierCard";
 import { usePuzzles } from "./api.js";
 
 const DIFFICULTIES: DifficultyTier[] = ["EASY", "MEDIUM", "HARD", "HARDCORE"];
@@ -17,14 +18,21 @@ export function DifficultyPicker() {
   }, [data, navigate]);
 
   return (
-    <section>
-      <h2>Pick a difficulty</h2>
-      {DIFFICULTIES.map((difficulty) => (
-        <button key={difficulty} onClick={() => setSelected(difficulty)}>
-          {difficulty}
-        </button>
-      ))}
-      {selected && isLoading && <p>Loading a {selected.toLowerCase()} puzzle…</p>}
+    <section className="w-full max-w-3xl">
+      <p className="mb-6 font-mono text-xs text-neutral-500">// choose your clearance level</p>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {DIFFICULTIES.map((difficulty) => (
+          <DifficultyTierCard
+            key={difficulty}
+            difficulty={difficulty}
+            isSelected={selected === difficulty}
+            onSelect={() => setSelected(difficulty)}
+          />
+        ))}
+      </div>
+      {selected && isLoading && (
+        <p className="mt-4 font-mono text-sm text-neutral-500">Loading a {selected.toLowerCase()} puzzle…</p>
+      )}
     </section>
   );
 }
