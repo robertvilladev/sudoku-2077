@@ -153,7 +153,14 @@ function PuzzleBoard({
               >
                 RESUME
               </Button>
-              <Button variant="primary" onClick={() => navigate("/")}>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  if (board.isComplete || window.confirm("Quit to menu? Your progress will be lost.")) {
+                    navigate("/");
+                  }
+                }}
+              >
                 QUIT TO MENU
               </Button>
             </DialogFooter>
