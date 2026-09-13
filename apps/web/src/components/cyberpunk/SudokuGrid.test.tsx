@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { SettingsProvider } from "../../lib/settings/SettingsContext.js";
 import { useBoardState } from "../../features/puzzle/useBoardState.js";
 import { SudokuGrid } from "./SudokuGrid.js";
@@ -21,6 +21,8 @@ function renderGrid() {
 }
 
 describe("SudokuGrid", () => {
+  beforeEach(() => localStorage.clear());
+
   it("renders given cells as read-only and non-given cells as empty", () => {
     renderGrid();
     expect(screen.getByLabelText("Row 1, column 1, 1")).toHaveAttribute("data-state", "given");
