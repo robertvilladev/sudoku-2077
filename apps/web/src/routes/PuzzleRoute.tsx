@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { DifficultyTier } from "@sudoku-2077/api-types";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import { useBoardState } from "../features/puzzle/useBoardState.js";
 import { useRerollPuzzle } from "../features/puzzle/useRerollPuzzle.js";
 import { useGameTimer } from "../features/puzzle/useGameTimer.js";
 import { clearProgress, readProgress, writeProgress } from "../features/puzzle/progressStorage.js";
+import { playSfx } from "../lib/audio/sfx.js";
 
 export function PuzzleRoute() {
   const { id = "" } = useParams();
@@ -84,6 +85,41 @@ function PuzzleBoard({
     if (board.isGameOver) timer.pause();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timer.pause is stable; timer itself is a fresh object every render
   }, [board.isGameOver]);
+
+  // Sound cues: each effect diffs previous vs. current value via a ref so it fires only on the
+  // actual transition, not on every render. playSfx itself is settings-unaware; gate here.
+  const prevMistakeCountRef = useRef(board.mistakeCount);
+  useEffect(() => {
+    if (settings.soundOn && board.mistakeCount > prevMistakeCountRef.current) {
+      playSfx("error");
+    }
+    prevMistakeCountRef.current = board.mistakeCount;
+  }, [board.mistakeCount, settings.soundOn]);
+
+  const prevGridRef = useRef(board.grid);
+  useEffect(() => {
+    const prevGrid = prevGridRef.current;
+    if (settings.soundOn && prevGrid.some((value, index) => value === 0 && board.grid[index] !== 0)) {
+      playSfx("place");
+    }
+    prevGridRef.current = board.grid;
+  }, [board.grid, settings.soundOn]);
+
+  const prevNotesModeRef = useRef(board.notesMode);
+  useEffect(() => {
+    if (settings.soundOn && board.notesMode !== prevNotesModeRef.current) {
+      playSfx("notesToggle");
+    }
+    prevNotesModeRef.current = board.notesMode;
+  }, [board.notesMode, settings.soundOn]);
+
+  const prevIsWonRef = useRef(isWon);
+  useEffect(() => {
+    if (settings.soundOn && isWon && !prevIsWonRef.current) {
+      playSfx("win");
+    }
+    prevIsWonRef.current = isWon;
+  }, [isWon, settings.soundOn]);
 
   return (
     <PageFlicker>
