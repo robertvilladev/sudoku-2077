@@ -59,6 +59,11 @@ function PuzzleBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timer.pause is stable; timer itself is a fresh object every render
   }, [isWon]);
 
+  useEffect(() => {
+    if (board.isGameOver) timer.pause();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- timer.pause is stable; timer itself is a fresh object every render
+  }, [board.isGameOver]);
+
   return (
     <PageFlicker>
       <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-4">
@@ -125,6 +130,34 @@ function PuzzleBoard({
             <DialogFooter>
               <Button variant="secondary" onClick={() => navigate("/")}>
                 MENU
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={board.isGameOver}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <Badge variant="outline" className="self-start">
+                PUZZLE_FAILED
+              </Badge>
+              <DialogTitle asChild>
+                <GlitchText className="font-mono text-2xl font-bold text-[oklch(66%_0.16_25)] glow-text-error">
+                  GRID CORRUPTED
+                </GlitchText>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4">
+              <Stat label="TIME" value={formatTime(timer.elapsedSeconds)} />
+              <Stat label="DIFFICULTY" value={difficulty} />
+            </div>
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => navigate("/")}>
+                MENU
+              </Button>
+              {/* ponytail: RETRY is a disabled placeholder until Task 5 wires up rerolling a new puzzle at this difficulty */}
+              <Button variant="primary" disabled>
+                RETRY
               </Button>
             </DialogFooter>
           </DialogContent>

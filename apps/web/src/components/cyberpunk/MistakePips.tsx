@@ -1,4 +1,4 @@
-const MAX_MISTAKES = 3;
+import { MAX_MISTAKES } from "../../features/puzzle/useBoardState.js";
 
 export function MistakePips({ count }: { count: number }) {
   return (

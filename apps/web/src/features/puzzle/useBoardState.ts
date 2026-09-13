@@ -2,6 +2,8 @@ import { useCallback, useMemo, useReducer, useState } from "react";
 import { peersOf, stringToGrid, type Grid } from "@sudoku-2077/sudoku-core";
 import { useSettings } from "../../lib/settings/SettingsContext.js";
 
+export const MAX_MISTAKES = 3;
+
 export interface UseBoardStateResult {
   grid: Grid;
   givenMask: boolean[];
@@ -9,6 +11,7 @@ export interface UseBoardStateResult {
   setCell: (index: number, value: number) => void;
   boardString: string;
   isComplete: boolean;
+  isGameOver: boolean;
   selectedIndex: number | null;
   selectCell: (index: number) => void;
   notesMode: boolean;
@@ -144,9 +147,10 @@ export function useBoardState(givens: string): UseBoardStateResult {
   const setCell = useCallback(
     (index: number, value: number) => {
       if (givenMask[index]) return;
+      if (state.mistakeCount >= MAX_MISTAKES) return;
       dispatch({ type: "SET_CELL", index, value, autoClearNotesOn });
     },
-    [givenMask, autoClearNotesOn]
+    [givenMask, autoClearNotesOn, state.mistakeCount]
   );
 
   const eraseCell = useCallback(
@@ -159,9 +163,10 @@ export function useBoardState(givens: string): UseBoardStateResult {
   const toggleNote = useCallback(
     (index: number, digit: number) => {
       if (givenMask[index]) return;
+      if (state.mistakeCount >= MAX_MISTAKES) return;
       dispatch({ type: "TOGGLE_NOTE", index, digit });
     },
-    [givenMask]
+    [givenMask, state.mistakeCount]
   );
 
   const undo = useCallback(() => {
@@ -184,6 +189,7 @@ export function useBoardState(givens: string): UseBoardStateResult {
 
   const boardString = useMemo(() => state.grid.map(String).join(""), [state.grid]);
   const isComplete = useMemo(() => !state.grid.includes(0), [state.grid]);
+  const isGameOver = useMemo(() => state.mistakeCount >= MAX_MISTAKES, [state.mistakeCount]);
 
   return {
     grid: state.grid,
@@ -192,6 +198,7 @@ export function useBoardState(givens: string): UseBoardStateResult {
     setCell,
     boardString,
     isComplete,
+    isGameOver,
     selectedIndex,
     selectCell,
     notesMode,

@@ -82,6 +82,21 @@ describe("useBoardState", () => {
     expect(result.current.canUndo).toBe(false);
   });
 
+  it("flips isGameOver once mistakes reach MAX_MISTAKES and freezes the board", () => {
+    const { result } = renderBoardState(givens);
+
+    act(() => result.current.setCell(1, 1)); // conflicts with the given 1 at index 0
+    act(() => result.current.setCell(2, 1)); // conflicts with the given 1 at index 0
+    act(() => result.current.setCell(3, 1)); // conflicts with the given 1 at index 0
+
+    expect(result.current.mistakeCount).toBe(3);
+    expect(result.current.isGameOver).toBe(true);
+
+    const gridAtGameOver = result.current.grid;
+    act(() => result.current.setCell(4, 5));
+    expect(result.current.grid).toBe(gridAtGameOver);
+  });
+
   it("clears a placed digit from peers' pencil marks when auto-clear notes is on", () => {
     const { result } = renderBoardState(givens);
 
