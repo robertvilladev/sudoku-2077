@@ -25,7 +25,7 @@ export function PuzzleRoute() {
   if (isLoading) return <p className="p-8 font-mono text-sm text-neutral-500">Loading puzzle…</p>;
   if (!puzzle) return <p className="p-8 font-mono text-sm text-neutral-500">Puzzle not found.</p>;
 
-  return <PuzzleBoard puzzleId={puzzle.id} givens={puzzle.givens} difficulty={puzzle.difficulty} />;
+  return <PuzzleBoard key={puzzle.id} puzzleId={puzzle.id} givens={puzzle.givens} difficulty={puzzle.difficulty} />;
 }
 
 function PuzzleBoard({
@@ -59,6 +59,9 @@ function PuzzleBoard({
   const isWon = validate.data?.completed === true && validate.data.correct === true;
 
   useEffect(() => {
+    // Guard against the interval firing once more after timer.pause() (which only flips isRunning;
+    // the underlying setInterval clears on next commit) — don't resurrect a just-cleared entry.
+    if (isWon) return;
     // useBoardState persists board fields on every board change, but only knows about elapsedSeconds
     // via whatever was last stored — so re-save the same entry here whenever the timer ticks, folding
     // in the current elapsedSeconds without introducing a second parallel storage key.

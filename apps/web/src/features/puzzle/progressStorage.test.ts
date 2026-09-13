@@ -42,6 +42,11 @@ describe("progressStorage", () => {
     expect(readProgress(puzzleId)).toBeNull();
   });
 
+  it("returns null for a syntactically-valid entry missing the grid field", () => {
+    localStorage.setItem(`sudoku2077.progress.${puzzleId}`, JSON.stringify({ notes: {} }));
+    expect(readProgress(puzzleId)).toBeNull();
+  });
+
   it("clearProgress removes the stored entry", () => {
     writeProgress(puzzleId, {
       grid: [1],

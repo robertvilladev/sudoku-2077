@@ -26,6 +26,7 @@ export function readProgress(puzzleId: string): StoredProgress | null {
     const raw = localStorage.getItem(storageKey(puzzleId));
     if (!raw) return null;
     const wire = JSON.parse(raw) as StoredProgressWire;
+    if (!Array.isArray(wire.grid)) return null;
     const notes: Record<number, Set<number>> = {};
     for (const [index, digits] of Object.entries(wire.notes)) {
       notes[Number(index)] = new Set(digits);

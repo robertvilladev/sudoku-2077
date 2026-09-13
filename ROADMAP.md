@@ -49,14 +49,14 @@ Nothing here is user-facing; it's what makes everything after this phase safe to
 
 ## Phase 2.5 — Core loop completeness & client hardening
 
-**Client-only — no backend changes required, so this can run in parallel with Phase 1 rather than waiting on it.** The reskin in PR #4 made the basic loop playable end-to-end, but left a few gaps a player would hit in their first couple of games (no losing state, a Sound FX toggle that does nothing, progress that vanishes on refresh) plus some polish/robustness work. Full task-by-task plan: `docs/superpowers/plans/2026-09-13-core-loop-completeness.md`.
+**Status: shipped.** **Client-only — no backend changes required, so this can run in parallel with Phase 1 rather than waiting on it.** The reskin in PR #4 made the basic loop playable end-to-end, but left a few gaps a player would hit in their first couple of games (no losing state, a Sound FX toggle that does nothing, progress that vanishes on refresh) plus some polish/robustness work. Full task-by-task plan: `docs/superpowers/plans/2026-09-13-core-loop-completeness.md`.
 
-- [ ] Mistake-limit losing state (a "GRID CORRUPTED" dialog mirroring the win dialog, at 3/3 mistakes)
-- [ ] "Next puzzle" reroll action on the win dialog (same difficulty)
-- [ ] Progress persistence to `localStorage` so a refresh/back-button doesn't lose an in-progress board
-- [ ] Sound effects wired to the existing (currently inert) SOUND FX setting
-- [ ] Visible retry/error state when `/validate` fails (offline, 500, etc.)
-- [ ] Confirm-before-quit when abandoning an in-progress puzzle
+- [x] Mistake-limit losing state (a "GRID CORRUPTED" dialog mirroring the win dialog, at 3/3 mistakes)
+- [x] "Next puzzle" reroll action on the win dialog (same difficulty)
+- [x] Progress persistence to `localStorage` so a refresh/back-button doesn't lose an in-progress board
+- [x] Sound effects wired to the existing (currently inert) SOUND FX setting
+- [x] Visible retry/error state when `/validate` fails (offline, 500, etc.)
+- [x] Confirm-before-quit when abandoning an in-progress puzzle
 
 Deferred backlog from the same review (not in the detailed plan above, revisit after the client feels solid):
 - [ ] Hint system (reveal one digit at a cost) and a "fill all candidate notes" helper
