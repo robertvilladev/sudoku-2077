@@ -73,6 +73,18 @@ function PuzzleBoard({
           }}
         />
 
+        {validate.isError && (
+          <div
+            role="alert"
+            className="flex items-center justify-between rounded-md border border-[oklch(66%_0.16_25)] px-4 py-2 font-mono text-sm text-[oklch(66%_0.16_25)]"
+          >
+            <span>Couldn't verify your solution — check your connection.</span>
+            <Button variant="secondary" onClick={() => validate.mutate(board.boardString)}>
+              RETRY
+            </Button>
+          </div>
+        )}
+
         <SudokuGrid board={board} />
 
         <NumberPad
