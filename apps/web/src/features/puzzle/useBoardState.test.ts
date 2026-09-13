@@ -1,14 +1,19 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { SettingsProvider } from "../../lib/settings/SettingsContext.js";
+import { readProgress, writeProgress } from "./progressStorage.js";
 import { useBoardState } from "./useBoardState.js";
 
-function renderBoardState(givens: string) {
-  return renderHook(() => useBoardState(givens), { wrapper: SettingsProvider });
+function renderBoardState(givens: string, puzzleId = "test-puzzle") {
+  return renderHook(() => useBoardState(givens, puzzleId), { wrapper: SettingsProvider });
 }
 
 describe("useBoardState", () => {
   const givens = `1${"0".repeat(80)}`;
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
 
   it("marks given cells and refuses to modify them", () => {
     const { result } = renderBoardState(givens);
@@ -104,5 +109,50 @@ describe("useBoardState", () => {
     act(() => result.current.setCell(5, 9));
 
     expect(result.current.notes[2]?.has(9)).toBe(false);
+  });
+
+  it("persists state to storage on every change", () => {
+    const { result } = renderBoardState(givens, "persist-puzzle");
+
+    act(() => result.current.setCell(5, 9));
+
+    const stored = readProgress("persist-puzzle");
+    expect(stored?.grid[5]).toBe(9);
+    expect(stored?.mistakeCount).toBe(0);
+  });
+
+  it("resumes from a stored entry matching the puzzle's grid length", () => {
+    writeProgress("resume-puzzle", {
+      grid: [1, ...Array(80).fill(0)].map((v, i) => (i === 5 ? 9 : v)),
+      notes: { 6: new Set([2, 3]) },
+      mistakeCount: 1,
+      combo: 2,
+      maxCombo: 2,
+      elapsedSeconds: 30,
+    });
+
+    const { result } = renderBoardState(givens, "resume-puzzle");
+
+    expect(result.current.grid[5]).toBe(9);
+    expect(result.current.notes[6]?.has(2)).toBe(true);
+    expect(result.current.mistakeCount).toBe(1);
+    expect(result.current.maxCombo).toBe(2);
+  });
+
+  it("falls back to a fresh board when the stored entry's grid length doesn't match (stale/corrupt entry)", () => {
+    writeProgress("stale-puzzle", {
+      grid: [1, 2, 3], // wrong length for this 81-cell puzzle
+      notes: {},
+      mistakeCount: 2,
+      combo: 0,
+      maxCombo: 0,
+      elapsedSeconds: 30,
+    });
+
+    const { result } = renderBoardState(givens, "stale-puzzle");
+
+    expect(result.current.grid.length).toBe(81);
+    expect(result.current.grid[0]).toBe(1); // the given, not the stale stored value
+    expect(result.current.mistakeCount).toBe(0);
   });
 });

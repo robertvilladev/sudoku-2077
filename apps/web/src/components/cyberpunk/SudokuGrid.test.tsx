@@ -8,7 +8,7 @@ import { SudokuGrid } from "./SudokuGrid.js";
 const givens = `1${"0".repeat(80)}`;
 
 function Harness() {
-  const board = useBoardState(givens);
+  const board = useBoardState(givens, "test-puzzle");
   return <SudokuGrid board={board} />;
 }
 

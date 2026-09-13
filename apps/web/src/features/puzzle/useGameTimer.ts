@@ -7,8 +7,8 @@ export interface UseGameTimerResult {
   resume: () => void;
 }
 
-export function useGameTimer(): UseGameTimerResult {
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+export function useGameTimer(initialSeconds = 0): UseGameTimerResult {
+  const [elapsedSeconds, setElapsedSeconds] = useState(initialSeconds);
   const [isRunning, setIsRunning] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 

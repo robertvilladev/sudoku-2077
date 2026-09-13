@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { peersOf, stringToGrid, type Grid } from "@sudoku-2077/sudoku-core";
 import { useSettings } from "../../lib/settings/SettingsContext.js";
+import { readProgress, writeProgress } from "./progressStorage.js";
 
 export const MAX_MISTAKES = 3;
 
@@ -124,14 +125,45 @@ function initReducerState(grid: Grid): ReducerState {
   return { grid, notes: {}, history: [], mistakeCount: 0, combo: 0, maxCombo: 0 };
 }
 
+// Seeds from a previously-persisted entry when it's present and looks like it belongs to this
+// puzzle (matching grid length) — defends against a stale/corrupt entry left over from another
+// puzzle shape. The undo stack is deliberately not persisted; resuming with a fresh one is fine.
+function initReducerStateFromStorage(grid: Grid, puzzleId: string): ReducerState {
+  const stored = readProgress(puzzleId);
+  if (!stored || stored.grid.length !== grid.length) return initReducerState(grid);
+  return {
+    grid: stored.grid,
+    notes: stored.notes,
+    history: [],
+    mistakeCount: stored.mistakeCount,
+    combo: stored.combo,
+    maxCombo: stored.maxCombo,
+  };
+}
+
 // Instant local feedback only (conflict highlighting) — the authoritative check against the stored
 // solution always happens server-side via useValidatePuzzle, so the solution never reaches the client.
-export function useBoardState(givens: string): UseBoardStateResult {
+export function useBoardState(givens: string, puzzleId: string): UseBoardStateResult {
   const initialGrid = useMemo(() => stringToGrid(givens), [givens]);
   const givenMask = useMemo(() => initialGrid.map((value) => value !== 0), [initialGrid]);
   const { autoClearNotesOn } = useSettings();
 
-  const [state, dispatch] = useReducer(reducer, initialGrid, initReducerState);
+  const [state, dispatch] = useReducer(
+    reducer,
+    initialGrid,
+    (grid) => initReducerStateFromStorage(grid, puzzleId)
+  );
+
+  useEffect(() => {
+    writeProgress(puzzleId, {
+      grid: state.grid,
+      notes: state.notes,
+      mistakeCount: state.mistakeCount,
+      combo: state.combo,
+      maxCombo: state.maxCombo,
+      elapsedSeconds: readProgress(puzzleId)?.elapsedSeconds ?? 0,
+    });
+  }, [puzzleId, state.grid, state.notes, state.mistakeCount, state.combo, state.maxCombo]);
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [notesMode, setNotesMode] = useState(false);

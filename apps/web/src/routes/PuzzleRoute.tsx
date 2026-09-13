@@ -14,6 +14,7 @@ import { useSettings } from "../lib/settings/SettingsContext.js";
 import { usePuzzle, useValidatePuzzle } from "../features/puzzle/api.js";
 import { useBoardState } from "../features/puzzle/useBoardState.js";
 import { useGameTimer } from "../features/puzzle/useGameTimer.js";
+import { clearProgress, readProgress, writeProgress } from "../features/puzzle/progressStorage.js";
 
 export function PuzzleRoute() {
   const { id = "" } = useParams();
@@ -35,9 +36,9 @@ function PuzzleBoard({
   difficulty: DifficultyTier;
 }) {
   const navigate = useNavigate();
-  const board = useBoardState(givens);
+  const board = useBoardState(givens, puzzleId);
   const validate = useValidatePuzzle(puzzleId);
-  const timer = useGameTimer();
+  const timer = useGameTimer(readProgress(puzzleId)?.elapsedSeconds ?? 0);
   const settings = useSettings();
   const [isPaused, setIsPaused] = useState(false);
   const [validatedBoardString, setValidatedBoardString] = useState<string | null>(null);
@@ -55,7 +56,25 @@ function PuzzleBoard({
   const isWon = validate.data?.completed === true && validate.data.correct === true;
 
   useEffect(() => {
-    if (isWon) timer.pause();
+    // useBoardState persists board fields on every board change, but only knows about elapsedSeconds
+    // via whatever was last stored — so re-save the same entry here whenever the timer ticks, folding
+    // in the current elapsedSeconds without introducing a second parallel storage key.
+    writeProgress(puzzleId, {
+      grid: board.grid,
+      notes: board.notes,
+      mistakeCount: board.mistakeCount,
+      combo: board.combo,
+      maxCombo: board.maxCombo,
+      elapsedSeconds: timer.elapsedSeconds,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run on every timer tick; board fields are read fresh from the closure each time
+  }, [puzzleId, timer.elapsedSeconds]);
+
+  useEffect(() => {
+    if (isWon) {
+      timer.pause();
+      clearProgress(puzzleId);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timer.pause is stable; timer itself is a fresh object every render
   }, [isWon]);
 
