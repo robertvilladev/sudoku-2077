@@ -13,6 +13,7 @@ import { ActionRow, NumberPad } from "@/components/cyberpunk/NumberPad";
 import { useSettings } from "../lib/settings/SettingsContext.js";
 import { usePuzzle, useValidatePuzzle } from "../features/puzzle/api.js";
 import { useBoardState } from "../features/puzzle/useBoardState.js";
+import { useRerollPuzzle } from "../features/puzzle/useRerollPuzzle.js";
 import { useGameTimer } from "../features/puzzle/useGameTimer.js";
 import { clearProgress, readProgress, writeProgress } from "../features/puzzle/progressStorage.js";
 
@@ -38,6 +39,7 @@ function PuzzleBoard({
   const navigate = useNavigate();
   const board = useBoardState(givens, puzzleId);
   const validate = useValidatePuzzle(puzzleId);
+  const { reroll, isLoading: isRerolling } = useRerollPuzzle(difficulty);
   const timer = useGameTimer(readProgress(puzzleId)?.elapsedSeconds ?? 0);
   const settings = useSettings();
   const [isPaused, setIsPaused] = useState(false);
@@ -150,6 +152,9 @@ function PuzzleBoard({
               <Button variant="secondary" onClick={() => navigate("/")}>
                 MENU
               </Button>
+              <Button variant="primary" onClick={reroll} disabled={isRerolling}>
+                NEXT PUZZLE
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -174,8 +179,7 @@ function PuzzleBoard({
               <Button variant="secondary" onClick={() => navigate("/")}>
                 MENU
               </Button>
-              {/* ponytail: RETRY is a disabled placeholder until Task 5 wires up rerolling a new puzzle at this difficulty */}
-              <Button variant="primary" disabled>
+              <Button variant="primary" onClick={reroll} disabled={isRerolling}>
                 RETRY
               </Button>
             </DialogFooter>

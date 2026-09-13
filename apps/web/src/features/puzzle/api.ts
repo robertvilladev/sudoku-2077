@@ -14,9 +14,9 @@ export function useDailyChallenge() {
   });
 }
 
-export function usePuzzles(difficulty: DifficultyTier | null) {
+export function usePuzzles(difficulty: DifficultyTier | null, attempt = 0) {
   return useQuery({
-    queryKey: ["puzzles", difficulty],
+    queryKey: ["puzzles", difficulty, attempt],
     queryFn: () => getJson(`/api/puzzles?difficulty=${difficulty}`, PublicPuzzleSchema),
     enabled: difficulty !== null,
   });
