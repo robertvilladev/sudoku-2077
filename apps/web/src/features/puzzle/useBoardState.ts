@@ -1,6 +1,9 @@
-import { useCallback, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { peersOf, stringToGrid, type Grid } from "@sudoku-2077/sudoku-core";
 import { useSettings } from "../../lib/settings/SettingsContext.js";
+import { readValidProgress, writeProgress } from "./progressStorage.js";
+
+export const MAX_MISTAKES = 3;
 
 export interface UseBoardStateResult {
   grid: Grid;
@@ -9,6 +12,7 @@ export interface UseBoardStateResult {
   setCell: (index: number, value: number) => void;
   boardString: string;
   isComplete: boolean;
+  isGameOver: boolean;
   selectedIndex: number | null;
   selectCell: (index: number) => void;
   notesMode: boolean;
@@ -121,14 +125,49 @@ function initReducerState(grid: Grid): ReducerState {
   return { grid, notes: {}, history: [], mistakeCount: 0, combo: 0, maxCombo: 0 };
 }
 
+// Seeds from a previously-persisted entry when it's present and looks like it belongs to this
+// puzzle: matching grid length, and every given cell still holds its given value — defends against
+// a stale/corrupt entry (wrong shape, or one that would silently overwrite a given with a value the
+// player could never undo, since givenMask always blocks edits to that index). The undo stack is
+// deliberately not persisted; resuming with a fresh one is fine.
+function initReducerStateFromStorage(grid: Grid, puzzleId: string): ReducerState {
+  const stored = readValidProgress(puzzleId, grid.length);
+  if (!stored) return initReducerState(grid);
+  const givensPreserved = grid.every((value, index) => value === 0 || stored.grid[index] === value);
+  if (!givensPreserved) return initReducerState(grid);
+  return {
+    grid: stored.grid,
+    notes: stored.notes,
+    history: [],
+    mistakeCount: stored.mistakeCount,
+    combo: stored.combo,
+    maxCombo: stored.maxCombo,
+  };
+}
+
 // Instant local feedback only (conflict highlighting) — the authoritative check against the stored
 // solution always happens server-side via useValidatePuzzle, so the solution never reaches the client.
-export function useBoardState(givens: string): UseBoardStateResult {
+export function useBoardState(givens: string, puzzleId: string): UseBoardStateResult {
   const initialGrid = useMemo(() => stringToGrid(givens), [givens]);
   const givenMask = useMemo(() => initialGrid.map((value) => value !== 0), [initialGrid]);
   const { autoClearNotesOn } = useSettings();
 
-  const [state, dispatch] = useReducer(reducer, initialGrid, initReducerState);
+  const [state, dispatch] = useReducer(
+    reducer,
+    initialGrid,
+    (grid) => initReducerStateFromStorage(grid, puzzleId)
+  );
+
+  useEffect(() => {
+    writeProgress(puzzleId, {
+      grid: state.grid,
+      notes: state.notes,
+      mistakeCount: state.mistakeCount,
+      combo: state.combo,
+      maxCombo: state.maxCombo,
+      elapsedSeconds: readValidProgress(puzzleId, state.grid.length)?.elapsedSeconds ?? 0,
+    });
+  }, [puzzleId, state.grid, state.notes, state.mistakeCount, state.combo, state.maxCombo]);
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [notesMode, setNotesMode] = useState(false);
@@ -144,9 +183,10 @@ export function useBoardState(givens: string): UseBoardStateResult {
   const setCell = useCallback(
     (index: number, value: number) => {
       if (givenMask[index]) return;
+      if (state.mistakeCount >= MAX_MISTAKES) return;
       dispatch({ type: "SET_CELL", index, value, autoClearNotesOn });
     },
-    [givenMask, autoClearNotesOn]
+    [givenMask, autoClearNotesOn, state.mistakeCount]
   );
 
   const eraseCell = useCallback(
@@ -159,9 +199,10 @@ export function useBoardState(givens: string): UseBoardStateResult {
   const toggleNote = useCallback(
     (index: number, digit: number) => {
       if (givenMask[index]) return;
+      if (state.mistakeCount >= MAX_MISTAKES) return;
       dispatch({ type: "TOGGLE_NOTE", index, digit });
     },
-    [givenMask]
+    [givenMask, state.mistakeCount]
   );
 
   const undo = useCallback(() => {
@@ -184,6 +225,7 @@ export function useBoardState(givens: string): UseBoardStateResult {
 
   const boardString = useMemo(() => state.grid.map(String).join(""), [state.grid]);
   const isComplete = useMemo(() => !state.grid.includes(0), [state.grid]);
+  const isGameOver = useMemo(() => state.mistakeCount >= MAX_MISTAKES, [state.mistakeCount]);
 
   return {
     grid: state.grid,
@@ -192,6 +234,7 @@ export function useBoardState(givens: string): UseBoardStateResult {
     setCell,
     boardString,
     isComplete,
+    isGameOver,
     selectedIndex,
     selectCell,
     notesMode,

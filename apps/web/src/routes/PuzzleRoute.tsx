@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { DifficultyTier } from "@sudoku-2077/api-types";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,10 @@ import { ActionRow, NumberPad } from "@/components/cyberpunk/NumberPad";
 import { useSettings } from "../lib/settings/SettingsContext.js";
 import { usePuzzle, useValidatePuzzle } from "../features/puzzle/api.js";
 import { useBoardState } from "../features/puzzle/useBoardState.js";
+import { useRerollPuzzle } from "../features/puzzle/useRerollPuzzle.js";
 import { useGameTimer } from "../features/puzzle/useGameTimer.js";
+import { clearProgress, readValidProgress, writeProgress } from "../features/puzzle/progressStorage.js";
+import { playSfx } from "../lib/audio/sfx.js";
 
 export function PuzzleRoute() {
   const { id = "" } = useParams();
@@ -22,7 +25,7 @@ export function PuzzleRoute() {
   if (isLoading) return <p className="p-8 font-mono text-sm text-neutral-500">Loading puzzle…</p>;
   if (!puzzle) return <p className="p-8 font-mono text-sm text-neutral-500">Puzzle not found.</p>;
 
-  return <PuzzleBoard puzzleId={puzzle.id} givens={puzzle.givens} difficulty={puzzle.difficulty} />;
+  return <PuzzleBoard key={puzzle.id} puzzleId={puzzle.id} givens={puzzle.givens} difficulty={puzzle.difficulty} />;
 }
 
 function PuzzleBoard({
@@ -35,9 +38,10 @@ function PuzzleBoard({
   difficulty: DifficultyTier;
 }) {
   const navigate = useNavigate();
-  const board = useBoardState(givens);
+  const board = useBoardState(givens, puzzleId);
   const validate = useValidatePuzzle(puzzleId);
-  const timer = useGameTimer();
+  const { reroll, isLoading: isRerolling } = useRerollPuzzle(difficulty);
+  const timer = useGameTimer(readValidProgress(puzzleId, givens.length)?.elapsedSeconds ?? 0);
   const settings = useSettings();
   const [isPaused, setIsPaused] = useState(false);
   const [validatedBoardString, setValidatedBoardString] = useState<string | null>(null);
@@ -55,9 +59,70 @@ function PuzzleBoard({
   const isWon = validate.data?.completed === true && validate.data.correct === true;
 
   useEffect(() => {
-    if (isWon) timer.pause();
+    // Guard against the interval firing once more after timer.pause() (which only flips isRunning;
+    // the underlying setInterval clears on next commit) — don't resurrect a just-cleared entry.
+    if (isWon) return;
+    // useBoardState persists board fields on every board change, but only knows about elapsedSeconds
+    // via whatever was last stored — so re-save the same entry here whenever the timer ticks, folding
+    // in the current elapsedSeconds without introducing a second parallel storage key.
+    writeProgress(puzzleId, {
+      grid: board.grid,
+      notes: board.notes,
+      mistakeCount: board.mistakeCount,
+      combo: board.combo,
+      maxCombo: board.maxCombo,
+      elapsedSeconds: timer.elapsedSeconds,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run on every timer tick; board fields are read fresh from the closure each time
+  }, [puzzleId, timer.elapsedSeconds]);
+
+  useEffect(() => {
+    if (isWon) {
+      timer.pause();
+      clearProgress(puzzleId);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timer.pause is stable; timer itself is a fresh object every render
   }, [isWon]);
+
+  useEffect(() => {
+    if (board.isGameOver) timer.pause();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- timer.pause is stable; timer itself is a fresh object every render
+  }, [board.isGameOver]);
+
+  // Sound cues: each effect diffs previous vs. current value via a ref so it fires only on the
+  // actual transition, not on every render. playSfx itself is settings-unaware; gate here.
+  const prevMistakeCountRef = useRef(board.mistakeCount);
+  useEffect(() => {
+    if (settings.soundOn && board.mistakeCount > prevMistakeCountRef.current) {
+      playSfx("error");
+    }
+    prevMistakeCountRef.current = board.mistakeCount;
+  }, [board.mistakeCount, settings.soundOn]);
+
+  const prevGridRef = useRef(board.grid);
+  useEffect(() => {
+    const prevGrid = prevGridRef.current;
+    if (settings.soundOn && prevGrid.some((value, index) => value === 0 && board.grid[index] !== 0)) {
+      playSfx("place");
+    }
+    prevGridRef.current = board.grid;
+  }, [board.grid, settings.soundOn]);
+
+  const prevNotesModeRef = useRef(board.notesMode);
+  useEffect(() => {
+    if (settings.soundOn && board.notesMode !== prevNotesModeRef.current) {
+      playSfx("notesToggle");
+    }
+    prevNotesModeRef.current = board.notesMode;
+  }, [board.notesMode, settings.soundOn]);
+
+  const prevIsWonRef = useRef(isWon);
+  useEffect(() => {
+    if (settings.soundOn && isWon && !prevIsWonRef.current) {
+      playSfx("win");
+    }
+    prevIsWonRef.current = isWon;
+  }, [isWon, settings.soundOn]);
 
   return (
     <PageFlicker>
@@ -72,6 +137,18 @@ function PuzzleBoard({
             setIsPaused(true);
           }}
         />
+
+        {validate.isError && (
+          <div
+            role="alert"
+            className="flex items-center justify-between rounded-md border border-[oklch(66%_0.16_25)] px-4 py-2 font-mono text-sm text-[oklch(66%_0.16_25)]"
+          >
+            <span>Couldn't verify your solution — check your connection.</span>
+            <Button variant="secondary" onClick={() => validate.mutate(board.boardString)}>
+              RETRY
+            </Button>
+          </div>
+        )}
 
         <SudokuGrid board={board} />
 
@@ -114,6 +191,36 @@ function PuzzleBoard({
               <Button variant="secondary" onClick={() => navigate("/")}>
                 MENU
               </Button>
+              <Button variant="primary" onClick={reroll} disabled={isRerolling}>
+                NEXT PUZZLE
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={board.isGameOver}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <Badge variant="outline" className="self-start">
+                PUZZLE_FAILED
+              </Badge>
+              <DialogTitle asChild>
+                <GlitchText className="font-mono text-2xl font-bold text-[oklch(66%_0.16_25)] glow-text-error">
+                  GRID CORRUPTED
+                </GlitchText>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4">
+              <Stat label="TIME" value={formatTime(timer.elapsedSeconds)} />
+              <Stat label="DIFFICULTY" value={difficulty} />
+            </div>
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => navigate("/")}>
+                MENU
+              </Button>
+              <Button variant="primary" onClick={reroll} disabled={isRerolling}>
+                RETRY
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -153,7 +260,14 @@ function PuzzleBoard({
               >
                 RESUME
               </Button>
-              <Button variant="primary" onClick={() => navigate("/")}>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  if (isWon || window.confirm("Quit to menu? Your progress will be saved — you can resume this puzzle later.")) {
+                    navigate("/");
+                  }
+                }}
+              >
                 QUIT TO MENU
               </Button>
             </DialogFooter>
