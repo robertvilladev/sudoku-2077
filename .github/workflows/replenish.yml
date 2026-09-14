@@ -1,0 +1,30 @@
+name: Replenish puzzle pool
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily at 06:00 UTC
+  workflow_dispatch: {}
+
+concurrency:
+  group: replenish
+  cancel-in-progress: false # let an in-flight run finish; replenishPool.ts isn't safe to run concurrently
+
+jobs:
+  replenish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main # workflow_dispatch defaults to the branch picked in the UI; pin manual runs to production
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run --workspace apps/api prisma:generate
+      - name: Replenish
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }} # scoped to this step only, not exposed to npm ci's install scripts
+          MIN_POOL_SIZE: 20 # keep in sync with render.yaml
+          DAILY_CHALLENGE_LOOKAHEAD_DAYS: 30 # keep in sync with render.yaml
+        run: npm run replenish
