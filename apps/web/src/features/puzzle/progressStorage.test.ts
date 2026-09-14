@@ -47,6 +47,14 @@ describe("progressStorage", () => {
     expect(readProgress(puzzleId)).toBeNull();
   });
 
+  it("returns null for a syntactically-valid entry missing the mistakeCount field", () => {
+    localStorage.setItem(
+      `sudoku2077.progress.${puzzleId}`,
+      JSON.stringify({ grid: [1, 0, 0, 2], notes: {}, combo: 0, maxCombo: 0, elapsedSeconds: 0 })
+    );
+    expect(readProgress(puzzleId)).toBeNull();
+  });
+
   it("clearProgress removes the stored entry", () => {
     writeProgress(puzzleId, {
       grid: [1],

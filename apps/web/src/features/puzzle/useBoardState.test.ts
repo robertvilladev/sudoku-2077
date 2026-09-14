@@ -139,6 +139,22 @@ describe("useBoardState", () => {
     expect(result.current.maxCombo).toBe(2);
   });
 
+  it("falls back to a fresh board when the stored entry's grid disagrees with a given cell (stale/corrupt entry)", () => {
+    writeProgress("mismatched-given-puzzle", {
+      grid: [9, ...Array(80).fill(0)], // index 0 is given as 1; a stored 9 there is impossible
+      notes: {},
+      mistakeCount: 1,
+      combo: 0,
+      maxCombo: 0,
+      elapsedSeconds: 10,
+    });
+
+    const { result } = renderBoardState(givens, "mismatched-given-puzzle");
+
+    expect(result.current.grid[0]).toBe(1); // the given, not the mismatched stored value
+    expect(result.current.mistakeCount).toBe(0); // fresh state, not the corrupt entry's
+  });
+
   it("falls back to a fresh board when the stored entry's grid length doesn't match (stale/corrupt entry)", () => {
     writeProgress("stale-puzzle", {
       grid: [1, 2, 3], // wrong length for this 81-cell puzzle

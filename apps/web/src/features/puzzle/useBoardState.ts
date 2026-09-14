@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { peersOf, stringToGrid, type Grid } from "@sudoku-2077/sudoku-core";
 import { useSettings } from "../../lib/settings/SettingsContext.js";
-import { readProgress, writeProgress } from "./progressStorage.js";
+import { readValidProgress, writeProgress } from "./progressStorage.js";
 
 export const MAX_MISTAKES = 3;
 
@@ -126,11 +126,15 @@ function initReducerState(grid: Grid): ReducerState {
 }
 
 // Seeds from a previously-persisted entry when it's present and looks like it belongs to this
-// puzzle (matching grid length) — defends against a stale/corrupt entry left over from another
-// puzzle shape. The undo stack is deliberately not persisted; resuming with a fresh one is fine.
+// puzzle: matching grid length, and every given cell still holds its given value — defends against
+// a stale/corrupt entry (wrong shape, or one that would silently overwrite a given with a value the
+// player could never undo, since givenMask always blocks edits to that index). The undo stack is
+// deliberately not persisted; resuming with a fresh one is fine.
 function initReducerStateFromStorage(grid: Grid, puzzleId: string): ReducerState {
-  const stored = readProgress(puzzleId);
-  if (!stored || stored.grid.length !== grid.length) return initReducerState(grid);
+  const stored = readValidProgress(puzzleId, grid.length);
+  if (!stored) return initReducerState(grid);
+  const givensPreserved = grid.every((value, index) => value === 0 || stored.grid[index] === value);
+  if (!givensPreserved) return initReducerState(grid);
   return {
     grid: stored.grid,
     notes: stored.notes,
@@ -161,7 +165,7 @@ export function useBoardState(givens: string, puzzleId: string): UseBoardStateRe
       mistakeCount: state.mistakeCount,
       combo: state.combo,
       maxCombo: state.maxCombo,
-      elapsedSeconds: readProgress(puzzleId)?.elapsedSeconds ?? 0,
+      elapsedSeconds: readValidProgress(puzzleId, state.grid.length)?.elapsedSeconds ?? 0,
     });
   }, [puzzleId, state.grid, state.notes, state.mistakeCount, state.combo, state.maxCombo]);
 

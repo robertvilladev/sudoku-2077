@@ -15,7 +15,7 @@ import { usePuzzle, useValidatePuzzle } from "../features/puzzle/api.js";
 import { useBoardState } from "../features/puzzle/useBoardState.js";
 import { useRerollPuzzle } from "../features/puzzle/useRerollPuzzle.js";
 import { useGameTimer } from "../features/puzzle/useGameTimer.js";
-import { clearProgress, readProgress, writeProgress } from "../features/puzzle/progressStorage.js";
+import { clearProgress, readValidProgress, writeProgress } from "../features/puzzle/progressStorage.js";
 import { playSfx } from "../lib/audio/sfx.js";
 
 export function PuzzleRoute() {
@@ -41,7 +41,7 @@ function PuzzleBoard({
   const board = useBoardState(givens, puzzleId);
   const validate = useValidatePuzzle(puzzleId);
   const { reroll, isLoading: isRerolling } = useRerollPuzzle(difficulty);
-  const timer = useGameTimer(readProgress(puzzleId)?.elapsedSeconds ?? 0);
+  const timer = useGameTimer(readValidProgress(puzzleId, givens.length)?.elapsedSeconds ?? 0);
   const settings = useSettings();
   const [isPaused, setIsPaused] = useState(false);
   const [validatedBoardString, setValidatedBoardString] = useState<string | null>(null);
@@ -263,7 +263,7 @@ function PuzzleBoard({
               <Button
                 variant="primary"
                 onClick={() => {
-                  if (board.isComplete || window.confirm("Quit to menu? Your progress will be lost.")) {
+                  if (isWon || window.confirm("Quit to menu? Your progress will be saved — you can resume this puzzle later.")) {
                     navigate("/");
                   }
                 }}
