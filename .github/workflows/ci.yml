@@ -24,6 +24,7 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sudoku_2077?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/sudoku_2077?schema=public
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
