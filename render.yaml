@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: sudoku-2077-api
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm ci && npm run --workspace apps/api prisma:generate && npm exec --workspace apps/api -- prisma migrate deploy && npm run build
+    startCommand: npm run start --workspace apps/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: MIN_POOL_SIZE
+        value: 20
+      - key: DAILY_CHALLENGE_LOOKAHEAD_DAYS
+        value: 30
+      - key: RATE_LIMIT_MAX
+        value: 100

@@ -8,20 +8,20 @@ Guiding principle: **Phase 0 comes first.** Auth, the web client, and a leaderbo
 
 ## Phase 0 — Harden the current backend
 
-Nothing here is user-facing; it's what makes everything after this phase safe to build on.
+**Status: shipped.** Nothing here is user-facing; it's what makes everything after this phase safe to build on.
 
-- [ ] **Testing & CI** — GitHub Actions workflow running `npm run typecheck` and `npm run test` on every push/PR. Add integration tests for `apps/api` routes (today only `packages/sudoku-core` has tests) against an ephemeral Postgres in CI, mirroring the local `docker-compose.yml` setup.
-- [ ] **Error handling & validation** — a centralized Fastify error handler so unexpected exceptions return a consistent `{ error }` shape and status code instead of a default 500. Validate route params (e.g. `:id` in `/api/puzzles/:id`) with zod the same way query/body params already are.
-- [ ] **Security hardening**
+- [x] **Testing & CI** — GitHub Actions workflow running `npm run typecheck` and `npm run test` on every push/PR. Add integration tests for `apps/api` routes (today only `packages/sudoku-core` has tests) against an ephemeral Postgres in CI, mirroring the local `docker-compose.yml` setup.
+- [x] **Error handling & validation** — a centralized Fastify error handler so unexpected exceptions return a consistent `{ error }` shape and status code instead of a default 500. Validate route params (e.g. `:id` in `/api/puzzles/:id`) with zod the same way query/body params already are.
+- [x] **Security hardening**
   - `@fastify/cors`, scoped to known origins — currently unconfigured, so the future web app's browser calls will be blocked by default.
   - `@fastify/rate-limit` on public endpoints.
   - `@fastify/helmet` for standard security headers.
-- [ ] **Observability** — extend `/health` into a real readiness check (DB connectivity, not just process liveness). Keep the existing structured pino logging; add request-id correlation. Plan for error tracking (e.g. Sentry) once the API is public-facing.
-- [ ] **Database & config**
+- [x] **Observability** — extend `/health` into a real readiness check (DB connectivity, not just process liveness). Keep the existing structured pino logging; add request-id correlation. Plan for error tracking (e.g. Sentry) once the API is public-facing.
+- [x] **Database & config**
   - Note Prisma connection-pooling needs if the API ends up on a serverless/multi-instance host (e.g. PgBouncer) — relevant once a hosting decision is made.
   - Document the `prisma migrate dev` (local) vs `prisma migrate deploy` (CI/CD) split.
   - Validate required env vars at boot via a small zod-parsed env schema, so misconfiguration fails fast at startup instead of at first request.
-- [ ] **API documentation** — generate OpenAPI from the existing `@sudoku-2077/api-types` zod schemas (e.g. `@fastify/swagger` + `zod-to-openapi`) so the contract is browsable as more clients get added.
+- [x] **API documentation** — generate OpenAPI from the existing `@sudoku-2077/api-types` zod schemas (e.g. `@fastify/swagger` + `zod-to-openapi`) so the contract is browsable as more clients get added.
 
 ---
 
@@ -43,7 +43,7 @@ Nothing here is user-facing; it's what makes everything after this phase safe to
 - [x] `apps/web` scaffolded (Vite + React + TS + React Query), kept separate from the future React Native mobile client.
 - [x] Core screens: title/menu, difficulty picker, daily challenge, puzzle board (grid input + calls to `/validate`), basic profile page listing past completions.
 - [x] Login/signup **UI** exists (`LoginForm`/`SignupForm`), but calls provisional endpoints (`/api/auth/*`) that don't exist until Phase 1 ships — non-functional until then, mocked in tests via MSW.
-- [ ] Deploy target: Vercel fits this app well (static/SPA hosting). The API + Postgres will likely need a **separate** host (Railway/Render/Fly.io/a VPS) — Vercel's serverless model doesn't fit a long-running Fastify server, a persistent Postgres connection, and the background pool-replenish job. Plan on two deploy targets, not one, once hosting is decided.
+- [ ] Deploy target: decided — Vercel for `apps/web`, Render (free web service) for `apps/api`, Neon (free tier) for Postgres, and a GitHub Actions scheduled workflow for the pool-replenish job (Vercel's serverless model doesn't fit a long-running Fastify server). Config lives in `render.yaml` and `.github/workflows/replenish.yml`; manual account setup steps are in `README.md`'s Deployment notes. Unchecked until the manual setup is actually done and the app is live.
 
 ---
 

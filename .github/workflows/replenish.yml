@@ -1,0 +1,21 @@
+name: Replenish puzzle pool
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily at 06:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  replenish:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run --workspace apps/api prisma:generate
+      - run: npm run replenish
