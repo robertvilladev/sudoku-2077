@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, useAnimationControls } from "motion/react";
+import confetti from "canvas-confetti";
 import type { DifficultyTier } from "@sudoku-2077/api-types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -121,11 +122,12 @@ function PuzzleBoard({
 
   const prevIsWonRef = useRef(isWon);
   useEffect(() => {
-    if (settings.soundOn && isWon && !prevIsWonRef.current) {
-      playSfx("win");
+    if (isWon && !prevIsWonRef.current) {
+      if (settings.soundOn) playSfx("win");
+      if (settings.scanlineOn) confetti({ particleCount: 80, spread: 70, origin: { y: 0.4 } });
     }
     prevIsWonRef.current = isWon;
-  }, [isWon, settings.soundOn]);
+  }, [isWon, settings.soundOn, settings.scanlineOn]);
 
   return (
     <PageFlicker>
