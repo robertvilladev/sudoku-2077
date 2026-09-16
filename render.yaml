@@ -23,3 +23,5 @@ services:
         value: 14
       - key: RATE_LIMIT_MAX
         value: 100
+      - key: JWT_ACCESS_SECRET
+        sync: false

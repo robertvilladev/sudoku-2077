@@ -25,6 +25,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sudoku_2077?schema=public
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/sudoku_2077?schema=public
+      JWT_ACCESS_SECRET: test-secret-for-ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
