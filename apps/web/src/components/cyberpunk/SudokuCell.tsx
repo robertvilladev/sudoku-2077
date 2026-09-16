@@ -52,9 +52,11 @@ export function SudokuCell({
           ? "bg-[color-mix(in_srgb,oklch(66%_0.16_25)_16%,transparent)]"
           : isSelected
             ? "z-10 bg-[color-mix(in_srgb,var(--color-accent)_10%,transparent)]"
-            : isPeerHighlighted
-              ? "bg-[color-mix(in_srgb,var(--color-accent)_6%,transparent)]"
-              : "bg-transparent"
+            : isSameValueHighlighted
+              ? "bg-[color-mix(in_srgb,var(--color-accent)_8%,transparent)]"
+              : isPeerHighlighted
+                ? "bg-[color-mix(in_srgb,var(--color-accent)_6%,transparent)]"
+                : "bg-transparent"
       )}
     >
       {isSelected &&
