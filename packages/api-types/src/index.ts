@@ -36,6 +36,9 @@ export type GetPuzzlesQuery = z.infer<typeof GetPuzzlesQuerySchema>;
 
 export const ValidatePuzzleRequestSchema = z.object({
   board: z.string().length(81),
+  timeSeconds: z.number().int().nonnegative().optional(),
+  mistakeCount: z.number().int().nonnegative().optional(),
+  maxCombo: z.number().int().nonnegative().optional(),
 });
 export type ValidatePuzzleRequest = z.infer<typeof ValidatePuzzleRequestSchema>;
 
@@ -49,3 +52,31 @@ export const ErrorResponseSchema = z.object({
   error: z.string(),
 });
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+
+export const LoginRequestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+export type LoginRequest = z.infer<typeof LoginRequestSchema>;
+
+export const SignupRequestSchema = LoginRequestSchema;
+export type SignupRequest = z.infer<typeof SignupRequestSchema>;
+
+export const AuthResponseSchema = z.object({
+  accessToken: z.string(),
+  user: z.object({ id: z.string(), email: z.string().email() }),
+});
+export type AuthResponse = z.infer<typeof AuthResponseSchema>;
+
+export const CompletionSchema = z.object({
+  puzzleId: z.string(),
+  difficulty: DifficultySchema,
+  completedAt: z.string(),
+  timeSeconds: z.number().int().nonnegative(),
+  mistakeCount: z.number().int().nonnegative(),
+  maxCombo: z.number().int().nonnegative(),
+});
+export type Completion = z.infer<typeof CompletionSchema>;
+
+export const CompletionsResponseSchema = z.array(CompletionSchema);
+export type CompletionsResponse = z.infer<typeof CompletionsResponseSchema>;
