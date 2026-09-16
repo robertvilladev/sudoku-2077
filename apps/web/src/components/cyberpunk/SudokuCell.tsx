@@ -80,8 +80,11 @@ export function SudokuCell({
         ) : (
           <span
             className={clsx(
-              "font-semibold",
-              isSameValueHighlighted ? "font-medium text-accent-300" : "text-neutral-200"
+              isSameValueHighlighted
+                ? "font-semibold font-medium text-accent-300"
+                : (isGiven
+                    ? "font-semibold text-neutral-200"
+                    : "font-medium text-neutral-400")
             )}
           >
             {value}
