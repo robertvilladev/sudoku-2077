@@ -54,7 +54,12 @@ function PuzzleBoard({
     // gets re-checked (and can still win) once the player edits it into a new complete state.
     if (board.isComplete && board.boardString !== validatedBoardString && !validate.isPending) {
       setValidatedBoardString(board.boardString);
-      validate.mutate(board.boardString);
+      validate.mutate({
+        board: board.boardString,
+        timeSeconds: timer.elapsedSeconds,
+        mistakeCount: board.mistakeCount,
+        maxCombo: board.maxCombo,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fire validation once per unique complete boardString, not on every validate identity change
   }, [board.isComplete, board.boardString, validatedBoardString]);
@@ -156,7 +161,17 @@ function PuzzleBoard({
             className="flex items-center justify-between rounded-md border border-[oklch(66%_0.16_25)] px-4 py-2 font-mono text-sm text-[oklch(66%_0.16_25)]"
           >
             <span>Couldn't verify your solution — check your connection.</span>
-            <Button variant="secondary" onClick={() => validate.mutate(board.boardString)}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                validate.mutate({
+                  board: board.boardString,
+                  timeSeconds: timer.elapsedSeconds,
+                  mistakeCount: board.mistakeCount,
+                  maxCombo: board.maxCombo,
+                })
+              }
+            >
               RETRY
             </Button>
           </div>
