@@ -117,4 +117,7 @@ html.fx-off .scanline-overlay {
   .scanline-overlay {
     animation: none;
   }
+  .glow-text-combo-pulse {
+    animation: none;
+  }
 }
