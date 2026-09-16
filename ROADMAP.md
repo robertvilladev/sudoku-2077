@@ -82,6 +82,8 @@ The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `
 - [ ] Screen-shake on a mistake
 - [ ] Win-burst particles (`canvas-confetti`, ~3KB, no deps)
 - [ ] Ambient background hum toggle, synthesized via Web Audio (not an audio asset file) alongside the CRT scanline one
+- [ ] Visually distinguish given (fixed) digits from player-entered digits
+- [ ] Strengthen the same-value highlight (already grid-wide) with a background tint, not just a text-color shift
 
 ---
 

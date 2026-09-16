@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close out `ROADMAP.md` Phase 2.5's "more visual/animation polish" backlog item — escalating combo glow, a decrypting puzzle-load transition, screen-shake on a mistake, a win-burst effect, and an ambient hum toggle — so the board reads as more of a videogame without touching accessibility or rewriting the (already-decoupled) game logic.
+**Goal:** Close out `ROADMAP.md` Phase 2.5's "more visual/animation polish" backlog item — escalating combo glow, a decrypting puzzle-load transition, screen-shake on a mistake, a win-burst effect, and an ambient hum toggle — so the board reads as more of a videogame without touching accessibility or rewriting the (already-decoupled) game logic. Two readability asks were folded in afterward (Tasks 6-7): distinguishing given digits from player-entered ones, and strengthening the existing same-value highlight so it reads across the whole grid, not just as a faint text-color shift.
 
 **Architecture:** Additive/localized changes to `apps/web` only. No backend changes, no changes to `packages/sudoku-core`/`packages/api-types`, no deploy config changes. The board stays plain DOM/React (accessible `<button role="gridcell">` grid) — every task here is a non-interactive visual/audio layer on top of existing state, not a board rewrite. Full rationale for staying DOM+`motion` instead of adopting a canvas/WebGL renderer (PixiJS) or a game engine (Phaser) is in `ROADMAP.md` Phase 2.5's entry for this work; not re-litigated per-task here.
 
@@ -26,6 +26,8 @@
 3. Decrypting puzzle-load transition — self-contained in `PuzzleBoard`'s mount, independent of the others.
 4. Win-burst particles — new dependency, do it once the simpler motion-only tasks are settled.
 5. Ambient hum toggle — touches `SettingsContext` (new setting) and extends `sfx.ts`; do last since it's the most cross-cutting.
+6. Distinguish given vs. entered digits — independent of Tasks 1-5 (different concern, same file as Task 7 only), can run anytime; placed after the animation/audio tasks since it was added later.
+7. Strengthen the same-value highlight — do after Task 6 since both touch `SudokuCell.tsx`; sequential dispatch means Task 7's implementer sees Task 6's already-landed change.
 
 ---
 
@@ -96,6 +98,32 @@
 - [ ] In `PuzzleRoute.tsx`'s `PuzzleBoard`, add a `useEffect(() => { if (settings.humOn) startAmbientHum(); else stopAmbientHum(); return stopAmbientHum; }, [settings.humOn])` so the hum starts/stops with the setting and always stops on unmount (leaving the puzzle) — don't leave an oscillator running after navigating away.
 - [ ] Add a `SettingRow` for `"AMBIENT HUM"` in the Pause dialog (`PuzzleRoute.tsx:240-251`), alongside the existing three.
 - [ ] Manual verification: enable AMBIENT HUM in Pause, confirm a continuous low tone plays while resumed and stops when paused/toggled off/navigating to menu; confirm it defaults to off for a fresh player (no `localStorage` entry).
+
+---
+
+## Task 6: Distinguish given digits from player-entered digits
+
+**Files:**
+- Modify: `apps/web/src/components/cyberpunk/SudokuCell.tsx`
+
+**Approach:** Today `isGiven` only drives `data-state` (`SudokuCell.tsx:43`) and the `givenMask` gate that blocks edits — the rendered digit itself (`SudokuCell.tsx:80-89`) has no `isGiven` branch at all, so a given clue and a player's entry render identically (same weight, same `text-neutral-200`). Add the missing branch. Keep the existing conflict (`oklch(66%_0.16_25)` red) and same-value-highlight (`text-accent-300`) branches exactly as-is and taking priority — this only fills in the previously-missing default case:
+
+- [ ] In the digit-rendering ternary (`SudokuCell.tsx:80-89`), split the non-conflict, non-same-value-highlighted default into two: `isGiven` → keep the current bold/bright look (`font-semibold text-neutral-200`, i.e. today's unconditional default, since a given clue reads as "fixed truth"); not given (player-entered) → a visibly lighter/different treatment, e.g. `font-medium text-neutral-400` (or reuse whatever slightly-dimmer neutral shade Tailwind's neutral scale already gives you one step down — check `apps/web/src/index.css` for any custom neutral token overrides before picking a raw Tailwind shade). Don't introduce a new color — reuse the existing `text-accent-*`/`text-neutral-*` scale already used in this file and `HudBar.tsx`/`ComboBadge.tsx`.
+- [ ] Do not touch the `isSameValueHighlighted` or `isConflict` branches — they must still visually override both given and entered digits exactly as today.
+- [ ] Manual verification: start a puzzle, confirm given clues look distinctly bolder/brighter than digits you type in; confirm a same-value highlight and a conflict still look as they did before (unaffected by this change) regardless of whether the cell is given or entered.
+
+---
+
+## Task 7: Strengthen the same-value highlight across the whole grid
+
+**Files:**
+- Modify: `apps/web/src/components/cyberpunk/SudokuCell.tsx`
+
+**Approach:** `isSameValueHighlighted` is already computed grid-wide in `SudokuGrid.tsx:89-91` (`value === selectedValue`, checked against every cell, not just peers) — the highlight logic already covers the whole board, not just the row/col/box. What's weak is the visual: today it's *only* a text-color/weight change (`font-medium text-accent-300`, `SudokuCell.tsx:84`) with no background tint, unlike `isSelected`/`isPeerHighlighted`, which both get a background wash (`SudokuCell.tsx:51-57`). That's why it doesn't read as clearly across the grid. Add a background tint for it, at the same tier as (but visually distinct in strength from) the existing peer tint:
+
+- [ ] In the button's background `clsx`/ternary chain (`SudokuCell.tsx:51-57`), add an `isSameValueHighlighted` branch between `isSelected` and `isPeerHighlighted` — e.g. `bg-[color-mix(in_srgb,var(--color-accent)_8%,transparent)]`, between the existing selected (10%) and peer (6%) tiers so it reads as its own tier rather than being confused with either. (In practice `isSameValueHighlighted` and `isPeerHighlighted` are mutually exclusive under normal play — Sudoku's row/col/box constraint means a same-value cell can't also be a peer of the selected cell without that being a conflict, which already takes priority via `isConflict` — so the exact branch order only matters for that already-handled conflict case.)
+- [ ] Leave the existing text-color treatment (`text-accent-300`, `SudokuCell.tsx:84`) as-is — it stacks with the new background tint rather than being replaced.
+- [ ] Manual verification: select a cell with a value that appears elsewhere on the board outside its row/column/box; confirm those distant same-value cells now get a visible background tint (not just a text-color shift), distinguishable from peer-highlighted cells and from the selected cell itself.
 
 ---
 
