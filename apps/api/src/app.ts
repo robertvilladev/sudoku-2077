@@ -53,7 +53,7 @@ export async function buildApp() {
   await app.register(swagger, { mode: "static", specification: { document: buildOpenApiDocument() as any } });
   await app.register(swaggerUi, { routePrefix: "/docs" });
 
-  app.decorate("authenticate", async (request, reply) => {
+  app.decorate("authenticate", async (request) => {
     await request.jwtVerify();
   });
   app.decorate("optionalAuthenticate", async (request) => {
