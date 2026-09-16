@@ -73,17 +73,17 @@ Deferred backlog from the same review (not in the detailed plan above, revisit a
 
 ## Phase 2.6 — Game-feel effects
 
-Not started. The reskin already laid the groundwork for this — `motion` is already a dependency used for micro-interactions (`SudokuCell.tsx`'s selection glow, `GlitchText.tsx`), and SFX is already synthesized live via the Web Audio API (`apps/web/src/lib/audio/sfx.ts`) rather than shipped as asset files. This phase finishes that direction rather than starting a new one. Full task-by-task plan: `docs/superpowers/plans/2026-09-16-game-feel-effects.md`.
+**Status: shipped.** The reskin already laid the groundwork for this — `motion` is already a dependency used for micro-interactions (`SudokuCell.tsx`'s selection glow, `GlitchText.tsx`), and SFX is already synthesized live via the Web Audio API (`apps/web/src/lib/audio/sfx.ts`) rather than shipped as asset files. This phase finishes that direction rather than starting a new one. Full task-by-task plan: `docs/superpowers/plans/2026-09-16-game-feel-effects.md`.
 
 The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `<button role="gridcell">` grid) — a canvas/WebGL renderer or game engine (PixiJS/Phaser) would mean reimplementing keyboard navigation and accessibility that DOM+React already give for free, for a board that's fundamentally a grid UI, not a game world. Deferred, not planned: **if** the app ever needs real sprite/scene visuals (e.g. a shared renderer with `apps/mobile`, or non-sudoku minigames), revisit PixiJS as a dedicated effects/board-overlay renderer then — not needed for this phase.
 
-- [ ] Escalating combo glow (`ComboBadge.tsx`)
-- [ ] Animated "decrypting" puzzle-load transition
-- [ ] Screen-shake on a mistake
-- [ ] Win-burst particles (`canvas-confetti`, ~3KB, no deps)
-- [ ] Ambient background hum toggle, synthesized via Web Audio (not an audio asset file) alongside the CRT scanline one
-- [ ] Visually distinguish given (fixed) digits from player-entered digits
-- [ ] Strengthen the same-value highlight (already grid-wide) with a background tint, not just a text-color shift
+- [x] Escalating combo glow (`ComboBadge.tsx`)
+- [x] Animated "decrypting" puzzle-load transition
+- [x] Screen-shake on a mistake
+- [x] Win-burst particles (`canvas-confetti`, ~3KB, no deps)
+- [x] Ambient background hum toggle, synthesized via Web Audio (not an audio asset file) alongside the CRT scanline one
+- [x] Visually distinguish given (fixed) digits from player-entered digits
+- [x] Strengthen the same-value highlight (already grid-wide) with a background tint, not just a text-color shift
 
 ---
 

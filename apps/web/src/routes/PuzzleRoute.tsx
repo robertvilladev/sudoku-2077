@@ -124,7 +124,8 @@ function PuzzleBoard({
   useEffect(() => {
     if (isWon && !prevIsWonRef.current) {
       if (settings.soundOn) playSfx("win");
-      if (settings.scanlineOn) confetti({ particleCount: 80, spread: 70, origin: { y: 0.4 } });
+      if (settings.scanlineOn)
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.4 }, disableForReducedMotion: true });
     }
     prevIsWonRef.current = isWon;
   }, [isWon, settings.soundOn, settings.scanlineOn]);

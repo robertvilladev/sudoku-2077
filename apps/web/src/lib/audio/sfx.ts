@@ -5,11 +5,18 @@ export type SfxKind = "place" | "error" | "notesToggle" | "win";
 
 let audioContext: AudioContext | null = null;
 
-// Lazy module-level AudioContext: browsers block creation/autoplay before a user gesture, and every
-// call site here is already the result of a click or keypress, so first-use lazy init is sufficient.
+// Lazy module-level AudioContext, shared by playSfx and the ambient hum. Most call sites follow a
+// user gesture (click/keypress), but the hum's start effect can fire on mount from a persisted
+// localStorage setting with no gesture involved, which can create/leave the context "suspended".
+// So attempt resume() on every access: browsers that block a gesture-less resume just leave it
+// suspended until a real gesture happens, and we retry here on the next getAudioContext() call —
+// this also self-heals any existing SFX that shared the same suspended context.
 function getAudioContext(): AudioContext {
   if (!audioContext) {
     audioContext = new AudioContext();
+  }
+  if (audioContext.state === "suspended") {
+    void audioContext.resume();
   }
   return audioContext;
 }
