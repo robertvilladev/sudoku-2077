@@ -20,6 +20,6 @@ services:
       - key: MIN_POOL_SIZE
         value: 20
       - key: DAILY_CHALLENGE_LOOKAHEAD_DAYS
-        value: 30
+        value: 14
       - key: RATE_LIMIT_MAX
         value: 100
