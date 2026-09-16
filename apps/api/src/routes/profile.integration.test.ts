@@ -3,8 +3,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";
 import { prisma } from "../db/client.js";
 
-const solution = "1".repeat(81);
-const givens = "1".repeat(30) + "0".repeat(51);
+// Digit "2" (not "1", used by puzzles.integration.test.ts) so this file's cleanup queries, scoped by
+// `givens`, never race against or delete rows from a different test file running in parallel.
+const solution = "2".repeat(81);
+const givens = "2".repeat(30) + "0".repeat(51);
 
 async function seedPuzzle() {
   return prisma.puzzle.create({
