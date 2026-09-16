@@ -18,7 +18,7 @@ import { useBoardState } from "../features/puzzle/useBoardState.js";
 import { useRerollPuzzle } from "../features/puzzle/useRerollPuzzle.js";
 import { useGameTimer } from "../features/puzzle/useGameTimer.js";
 import { clearProgress, readValidProgress, writeProgress } from "../features/puzzle/progressStorage.js";
-import { playSfx } from "../lib/audio/sfx.js";
+import { playSfx, startAmbientHum, stopAmbientHum } from "../lib/audio/sfx.js";
 
 export function PuzzleRoute() {
   const { id = "" } = useParams();
@@ -128,6 +128,12 @@ function PuzzleBoard({
     }
     prevIsWonRef.current = isWon;
   }, [isWon, settings.soundOn, settings.scanlineOn]);
+
+  useEffect(() => {
+    if (settings.humOn) startAmbientHum();
+    else stopAmbientHum();
+    return stopAmbientHum;
+  }, [settings.humOn]);
 
   return (
     <PageFlicker>
@@ -264,6 +270,7 @@ function PuzzleBoard({
                 value={settings.autoClearNotesOn}
                 onToggle={settings.toggleAutoClearNotes}
               />
+              <SettingRow label="AMBIENT HUM" value={settings.humOn} onToggle={settings.toggleHum} />
             </div>
             <DialogFooter>
               <Button
