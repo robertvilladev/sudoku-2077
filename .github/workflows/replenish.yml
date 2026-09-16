@@ -22,10 +22,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run --workspace apps/api prisma:generate
+      - run: npm run build # builds packages/sudoku-core's dist output that replenishPool.ts imports at runtime
       - name: Replenish
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }} # scoped to this step only, not exposed to npm ci's install scripts
           MIN_POOL_SIZE: 20 # keep in sync with render.yaml
           DAILY_CHALLENGE_LOOKAHEAD_DAYS: 14 # keep in sync with render.yaml; stay under MIN_POOL_SIZE so the MEDIUM pool never runs dry
-
         run: npm run replenish
