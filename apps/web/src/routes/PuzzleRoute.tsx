@@ -153,7 +153,17 @@ function PuzzleBoard({
           </div>
         )}
 
-        <SudokuGrid board={board} />
+        {settings.scanlineOn ? (
+          <motion.div
+            initial={{ opacity: 0, filter: "blur(6px)" }}
+            animate={{ opacity: 1, filter: "blur(0px)" }}
+            transition={{ duration: 0.35 }}
+          >
+            <SudokuGrid board={board} />
+          </motion.div>
+        ) : (
+          <SudokuGrid board={board} />
+        )}
 
         <NumberPad
           grid={board.grid}
