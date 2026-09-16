@@ -66,3 +66,80 @@ describe("POST /api/puzzles/:id/validate", () => {
     expect(response.statusCode).toBe(400);
   });
 });
+
+describe("POST /api/puzzles/:id/validate — completion recording", () => {
+  async function createUserAndToken(app: Awaited<ReturnType<typeof buildApp>>) {
+    const email = `validate-test-${randomUUID()}@example.com`;
+    const signup = await app.inject({
+      method: "POST",
+      url: "/api/auth/signup",
+      payload: { email, password: "hunter2222" },
+    });
+    return { email, accessToken: signup.json().accessToken as string };
+  }
+
+  async function deleteUserByEmail(email: string) {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return;
+    await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
+    await prisma.puzzleCompletion.deleteMany({ where: { userId: user.id } });
+    await prisma.user.delete({ where: { id: user.id } });
+  }
+
+  afterEach(async () => {
+    await prisma.puzzleCompletion.deleteMany({ where: { puzzle: { givens } } });
+  });
+
+  it("records a completion for an authenticated correct solve", async () => {
+    const puzzle = await seedPuzzle();
+    const app = await buildApp();
+    const { email, accessToken } = await createUserAndToken(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/puzzles/${puzzle.id}/validate`,
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: { board: solution, timeSeconds: 42, mistakeCount: 1, maxCombo: 5 },
+    });
+    expect(response.statusCode).toBe(200);
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    const completions = await prisma.puzzleCompletion.findMany({ where: { puzzleId: puzzle.id, userId: user!.id } });
+    expect(completions).toHaveLength(1);
+    expect(completions[0]).toMatchObject({ timeSeconds: 42, mistakeCount: 1, maxCombo: 5 });
+
+    await deleteUserByEmail(email);
+  });
+
+  it("does not record a completion for an anonymous solve", async () => {
+    const puzzle = await seedPuzzle();
+    const app = await buildApp();
+
+    await app.inject({
+      method: "POST",
+      url: `/api/puzzles/${puzzle.id}/validate`,
+      payload: { board: solution },
+    });
+
+    const completions = await prisma.puzzleCompletion.findMany({ where: { puzzleId: puzzle.id } });
+    expect(completions).toHaveLength(0);
+  });
+
+  it("does not record a completion for an incorrect (authenticated) submission", async () => {
+    const puzzle = await seedPuzzle();
+    const app = await buildApp();
+    const { email, accessToken } = await createUserAndToken(app);
+
+    await app.inject({
+      method: "POST",
+      url: `/api/puzzles/${puzzle.id}/validate`,
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: { board: "9".repeat(81) },
+    });
+
+    const completions = await prisma.puzzleCompletion.findMany({ where: { puzzleId: puzzle.id } });
+    expect(completions).toHaveLength(0);
+
+    await deleteUserByEmail(email);
+  });
+});

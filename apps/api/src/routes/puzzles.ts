@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { GetPuzzlesQuerySchema, ValidatePuzzleRequestSchema } from "@sudoku-2077/api-types";
@@ -53,30 +54,48 @@ export async function puzzleRoutes(app: FastifyInstance) {
   });
 
   // Checks a submitted board against the stored solution server-side so the solution never has to
-  // leave the server before the player actually finishes the puzzle.
-  app.post("/api/puzzles/:id/validate", async (request, reply) => {
-    const params = PuzzleIdParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      reply.code(400);
-      return { error: "Invalid puzzle id" };
-    }
-    const { id } = params.data;
-    const parsed = ValidatePuzzleRequestSchema.safeParse(request.body);
-    if (!parsed.success) {
-      reply.code(400);
-      return { error: "Body must be { board: <81-char string> }" };
-    }
+  // leave the server before the player actually finishes the puzzle. Records a PuzzleCompletion only
+  // for authenticated, correct solves — anonymous play still works, it just isn't tracked.
+  app.post(
+    "/api/puzzles/:id/validate",
+    { preHandler: app.optionalAuthenticate },
+    async (request, reply) => {
+      const params = PuzzleIdParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        reply.code(400);
+        return { error: "Invalid puzzle id" };
+      }
+      const { id } = params.data;
+      const parsed = ValidatePuzzleRequestSchema.safeParse(request.body);
+      if (!parsed.success) {
+        reply.code(400);
+        return { error: "Body must be { board: <81-char string> }" };
+      }
 
-    const puzzle = await prisma.puzzle.findUnique({ where: { id } });
-    if (!puzzle) {
-      reply.code(404);
-      return { error: "Puzzle not found" };
+      const puzzle = await prisma.puzzle.findUnique({ where: { id } });
+      if (!puzzle) {
+        reply.code(404);
+        return { error: "Puzzle not found" };
+      }
+
+      const completed = !parsed.data.board.includes("0");
+      const correct = parsed.data.board === puzzle.solution;
+
+      if (correct && request.user) {
+        await prisma.puzzleCompletion.create({
+          data: {
+            id: randomUUID(),
+            userId: request.user.sub,
+            puzzleId: puzzle.id,
+            timeSeconds: parsed.data.timeSeconds ?? 0,
+            mistakeCount: parsed.data.mistakeCount ?? 0,
+            maxCombo: parsed.data.maxCombo ?? 0,
+          },
+        });
+      }
+
+      const response: ValidatePuzzleResponse = { correct, completed };
+      return response;
     }
-
-    const completed = !parsed.data.board.includes("0");
-    const correct = parsed.data.board === puzzle.solution;
-
-    const response: ValidatePuzzleResponse = { correct, completed };
-    return response;
-  });
+  );
 }
