@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { motion, useAnimationControls } from "motion/react";
 import type { DifficultyTier } from "@sudoku-2077/api-types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ function PuzzleBoard({
   const { reroll, isLoading: isRerolling } = useRerollPuzzle(difficulty);
   const timer = useGameTimer(readValidProgress(puzzleId, givens.length)?.elapsedSeconds ?? 0);
   const settings = useSettings();
+  const shakeControls = useAnimationControls();
   const [isPaused, setIsPaused] = useState(false);
   const [validatedBoardString, setValidatedBoardString] = useState<string | null>(null);
 
@@ -93,11 +95,12 @@ function PuzzleBoard({
   // actual transition, not on every render. playSfx itself is settings-unaware; gate here.
   const prevMistakeCountRef = useRef(board.mistakeCount);
   useEffect(() => {
-    if (settings.soundOn && board.mistakeCount > prevMistakeCountRef.current) {
-      playSfx("error");
+    if (board.mistakeCount > prevMistakeCountRef.current) {
+      if (settings.soundOn) playSfx("error");
+      if (settings.scanlineOn) shakeControls.start({ x: [0, -6, 6, -4, 4, 0], transition: { duration: 0.3 } });
     }
     prevMistakeCountRef.current = board.mistakeCount;
-  }, [board.mistakeCount, settings.soundOn]);
+  }, [board.mistakeCount, settings.soundOn, settings.scanlineOn, shakeControls]);
 
   const prevGridRef = useRef(board.grid);
   useEffect(() => {
@@ -126,7 +129,7 @@ function PuzzleBoard({
 
   return (
     <PageFlicker>
-      <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-4">
+      <motion.div animate={shakeControls} className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-4">
         <HudBar
           elapsedSeconds={timer.elapsedSeconds}
           mistakeCount={board.mistakeCount}
@@ -273,7 +276,7 @@ function PuzzleBoard({
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </motion.div>
     </PageFlicker>
   );
 }
