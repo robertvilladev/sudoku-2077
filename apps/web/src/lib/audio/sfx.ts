@@ -5,11 +5,18 @@ export type SfxKind = "place" | "error" | "notesToggle" | "win";
 
 let audioContext: AudioContext | null = null;
 
-// Lazy module-level AudioContext: browsers block creation/autoplay before a user gesture, and every
-// call site here is already the result of a click or keypress, so first-use lazy init is sufficient.
+// Lazy module-level AudioContext, shared by playSfx and the ambient hum. Most call sites follow a
+// user gesture (click/keypress), but the hum's start effect can fire on mount from a persisted
+// localStorage setting with no gesture involved, which can create/leave the context "suspended".
+// So attempt resume() on every access: browsers that block a gesture-less resume just leave it
+// suspended until a real gesture happens, and we retry here on the next getAudioContext() call —
+// this also self-heals any existing SFX that shared the same suspended context.
 function getAudioContext(): AudioContext {
   if (!audioContext) {
     audioContext = new AudioContext();
+  }
+  if (audioContext.state === "suspended") {
+    void audioContext.resume();
   }
   return audioContext;
 }
@@ -35,6 +42,34 @@ function playTone(
 
   oscillator.start(startTime);
   oscillator.stop(startTime + duration + 0.02);
+}
+
+let hum: { oscillator: OscillatorNode; gain: GainNode } | null = null;
+
+// Sustained drone, unlike playTone's fire-and-forget blips: the oscillator keeps running until
+// stopAmbientHum() is called, so the pair share module-level state across calls.
+export function startAmbientHum(): void {
+  if (hum) return;
+  const ctx = getAudioContext();
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.type = "sine";
+  oscillator.frequency.value = 55;
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+  gain.gain.value = 0.04;
+  oscillator.start();
+  hum = { oscillator, gain };
+}
+
+export function stopAmbientHum(): void {
+  if (!hum) return;
+  const { oscillator, gain } = hum;
+  const ctx = gain.context;
+  const now = ctx.currentTime;
+  gain.gain.linearRampToValueAtTime(0, now + 0.2);
+  oscillator.stop(now + 0.2);
+  hum = null;
 }
 
 export function playSfx(kind: SfxKind): void {

@@ -4,12 +4,14 @@ interface Settings {
   soundOn: boolean;
   scanlineOn: boolean;
   autoClearNotesOn: boolean;
+  humOn: boolean;
 }
 
 interface SettingsState extends Settings {
   toggleSound: () => void;
   toggleScanline: () => void;
   toggleAutoClearNotes: () => void;
+  toggleHum: () => void;
 }
 
 const STORAGE_KEY = "sudoku2077.settings";
@@ -18,6 +20,7 @@ const DEFAULTS: Settings = {
   soundOn: true,
   scanlineOn: true,
   autoClearNotesOn: true,
+  humOn: false,
 };
 
 function readStoredSettings(): Settings {
@@ -54,6 +57,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       toggleScanline: () => setSettings((prev) => ({ ...prev, scanlineOn: !prev.scanlineOn })),
       toggleAutoClearNotes: () =>
         setSettings((prev) => ({ ...prev, autoClearNotesOn: !prev.autoClearNotesOn })),
+      toggleHum: () => setSettings((prev) => ({ ...prev, humOn: !prev.humOn })),
     }),
     [settings]
   );

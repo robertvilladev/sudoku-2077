@@ -8,11 +8,12 @@ describe("useSettings", () => {
     document.documentElement.classList.remove("fx-off");
   });
 
-  it("defaults every setting to on", () => {
+  it("defaults each setting (humOn off, the rest on)", () => {
     const { result } = renderHook(() => useSettings(), { wrapper: SettingsProvider });
     expect(result.current.soundOn).toBe(true);
     expect(result.current.scanlineOn).toBe(true);
     expect(result.current.autoClearNotesOn).toBe(true);
+    expect(result.current.humOn).toBe(false);
   });
 
   it("persists a toggle to localStorage and reflects it in a fresh provider", () => {

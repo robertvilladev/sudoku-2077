@@ -39,6 +39,31 @@
   text-shadow: 0 0 18px color-mix(in srgb, oklch(70% 0.14 150) 45%, transparent);
 }
 
+.glow-text-combo-tier1 {
+  text-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+.glow-text-combo-tier2 {
+  text-shadow: 0 0 14px color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+
+.glow-text-combo-tier3 {
+  text-shadow: 0 0 20px color-mix(in srgb, var(--color-accent) 75%, transparent);
+}
+
+@keyframes combo-pulse {
+  0%, 100% {
+    text-shadow: 0 0 20px color-mix(in srgb, var(--color-accent) 75%, transparent);
+  }
+  50% {
+    text-shadow: 0 0 28px color-mix(in srgb, var(--color-accent) 90%, transparent);
+  }
+}
+
+.glow-text-combo-pulse {
+  animation: combo-pulse 1.5s ease-in-out infinite;
+}
+
 .terminal-grid-overlay {
   position: absolute;
   inset: 0;
@@ -90,6 +115,9 @@ html.fx-off .scanline-overlay {
 
 @media (prefers-reduced-motion: reduce) {
   .scanline-overlay {
+    animation: none;
+  }
+  .glow-text-combo-pulse {
     animation: none;
   }
 }

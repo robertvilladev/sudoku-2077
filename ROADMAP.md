@@ -43,7 +43,8 @@ Guiding principle: **Phase 0 comes first.** Auth, the web client, and a leaderbo
 - [x] `apps/web` scaffolded (Vite + React + TS + React Query), kept separate from the future React Native mobile client.
 - [x] Core screens: title/menu, difficulty picker, daily challenge, puzzle board (grid input + calls to `/validate`), basic profile page listing past completions.
 - [x] Login/signup **UI** exists (`LoginForm`/`SignupForm`), but calls provisional endpoints (`/api/auth/*`) that don't exist until Phase 1 ships — non-functional until then, mocked in tests via MSW.
-- [ ] Deploy target: decided — Vercel for `apps/web`, Render (free web service) for `apps/api`, Neon (free tier) for Postgres, and a GitHub Actions scheduled workflow for the pool-replenish job (Vercel's serverless model doesn't fit a long-running Fastify server). Config lives in `render.yaml` and `.github/workflows/replenish.yml`; manual account setup steps are in `README.md`'s Deployment notes. Unchecked until the manual setup is actually done and the app is live.
+- [x] Deploy target: decided and live — Vercel for `apps/web`, Render (free web service) for `apps/api`, Neon (free tier) for Postgres, and a GitHub Actions scheduled workflow for the pool-replenish job (Vercel's serverless model doesn't fit a long-running Fastify server). Config lives in `render.yaml` and `.github/workflows/replenish.yml`; manual account setup steps are in `README.md`'s Deployment notes.
+- [ ] **Follow-up:** watch the HARD-difficulty pool over the next few daily replenish runs. The first production seed (2026-09-16) only reached 14/20 HARD puzzles before hitting `MAX_GENERATION_ATTEMPTS` in `replenishPool.ts` — harder puzzles are rarer to land on via the random-givens generation strategy. Not blocking (14 is a usable pool, and the daily cron keeps retrying), but if it plateaus below 20 instead of climbing, revisit `MAX_GENERATION_ATTEMPTS` or the givens-range spread (`randomTargetGivens()`) in that file.
 
 ---
 
@@ -67,7 +68,22 @@ Deferred backlog from the same review (not in the detailed plan above, revisit a
 - [ ] Error boundaries around routes
 - [ ] Expand e2e coverage past the single smoke test (pause/settings, notes mode, win flow via a mocked `/validate`)
 - [ ] Route-based code splitting (the build already warns about a >500kB chunk)
-- [ ] More visual/animation polish: escalating combo glow, an animated "decrypting" puzzle-load transition, screen-shake on a mistake, an ambient background hum toggle alongside the CRT scanline one
+
+---
+
+## Phase 2.6 — Game-feel effects
+
+**Status: shipped.** The reskin already laid the groundwork for this — `motion` is already a dependency used for micro-interactions (`SudokuCell.tsx`'s selection glow, `GlitchText.tsx`), and SFX is already synthesized live via the Web Audio API (`apps/web/src/lib/audio/sfx.ts`) rather than shipped as asset files. This phase finishes that direction rather than starting a new one. Full task-by-task plan: `docs/superpowers/plans/2026-09-16-game-feel-effects.md`.
+
+The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `<button role="gridcell">` grid) — a canvas/WebGL renderer or game engine (PixiJS/Phaser) would mean reimplementing keyboard navigation and accessibility that DOM+React already give for free, for a board that's fundamentally a grid UI, not a game world. Deferred, not planned: **if** the app ever needs real sprite/scene visuals (e.g. a shared renderer with `apps/mobile`, or non-sudoku minigames), revisit PixiJS as a dedicated effects/board-overlay renderer then — not needed for this phase.
+
+- [x] Escalating combo glow (`ComboBadge.tsx`)
+- [x] Animated "decrypting" puzzle-load transition
+- [x] Screen-shake on a mistake
+- [x] Win-burst particles (`canvas-confetti`, ~3KB, no deps)
+- [x] Ambient background hum toggle, synthesized via Web Audio (not an audio asset file) alongside the CRT scanline one
+- [x] Visually distinguish given (fixed) digits from player-entered digits
+- [x] Strengthen the same-value highlight (already grid-wide) with a background tint, not just a text-color shift
 
 ---
 
