@@ -1,6 +1,6 @@
 # Roadmap: from current backend to a robust MVP
 
-Current state: the puzzle generator/classifier/pool backend is built and verified (`packages/sudoku-core`, `packages/api-types`, `apps/api`), and Phase 0 (backend hardening) and Phase 2 (web MVP client, including the cyberpunk re-theme) have shipped — see `README.md`. Phase 1 (auth) is next on the backend track; Phase 2.5 (client hardening) can proceed in parallel.
+Current state: the puzzle generator/classifier/pool backend is built and verified (`packages/sudoku-core`, `packages/api-types`, `apps/api`), and Phase 0 (backend hardening), Phase 1 (auth), and Phase 2 (web MVP client, including the cyberpunk re-theme) have shipped — see `README.md`. Phase 3 (wiring the frontend to the now-live auth endpoints) is next.
 
 Guiding principle: **Phase 0 comes first.** Auth, the web client, and a leaderboard should land on a backend that's already hardened, not get bolted onto one that isn't. Skipping Phase 0 means re-doing security/observability work later under a live user base instead of an empty one.
 
@@ -27,12 +27,17 @@ Guiding principle: **Phase 0 comes first.** Auth, the web client, and a leaderbo
 
 ## Phase 1 — Auth system (self-hosted email+password + JWT)
 
-- [ ] Prisma model `User` (id, email unique, passwordHash, createdAt).
-- [ ] Prisma model `RefreshToken` (userId, tokenHash, expiresAt, revoked) — DB-backed so refresh tokens are revocable, not just stateless JWTs.
-- [ ] `packages/api-types` — add `SignupRequest`, `LoginRequest`, `AuthResponse` DTOs alongside the existing puzzle DTOs.
-- [ ] `apps/api` — `/api/auth/signup`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/logout`. bcrypt for password hashing. Short-lived JWT access token + rotating refresh token. A Fastify `preHandler` auth decorator to protect routes that need a logged-in user.
-- [ ] Prisma model `PuzzleCompletion` (userId, puzzleId, completedAt, timeSeconds, mistakeCount, maxCombo) — introduce this now even though the leaderboard UI comes later, since it's what leaderboard/stats/scoring will eventually read from. Wire `/api/puzzles/:id/validate` to record a completion when an authenticated user solves a puzzle. Include `mistakeCount`/`maxCombo` from the start (the web client already computes these client-side, see Phase 2.5) so a real score formula (time + mistakes + combo, replacing the mockup's fabricated SCORE stat) has data to work from in Phase 4 without a later migration.
-- [ ] Open dependency decision, not blocking MVP: password-reset needs an email-sending provider (Resend/Postmark/SES). Can be stubbed or deferred post-MVP.
+**Status: shipped.** Design: `docs/superpowers/specs/2026-09-17-phase1-auth-design.md`.
+
+- [x] Prisma model `User` (id, email unique, passwordHash, createdAt).
+- [x] Prisma model `RefreshToken` (userId, tokenHash, expiresAt, revoked) — DB-backed so refresh tokens are revocable, not just stateless JWTs.
+- [x] `packages/api-types` — `SignupRequest`, `LoginRequest`, `AuthResponse` DTOs alongside the existing puzzle DTOs.
+- [x] `apps/api` — `/api/auth/signup`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/logout`. bcrypt for password hashing. Short-lived JWT access token + rotating refresh token (httpOnly cookie). A Fastify `preHandler` auth decorator (`app.authenticate`/`app.optionalAuthenticate`) to protect routes that need a logged-in user.
+- [x] Prisma model `PuzzleCompletion` (userId, puzzleId, completedAt, timeSeconds, mistakeCount, maxCombo). `/api/puzzles/:id/validate` records a completion for authenticated, correct solves.
+- [x] `GET /api/profile/completions` (not originally listed here, added since the frontend already expected it) — the profile page is now backed by real data instead of MSW mocks.
+- [ ] **Follow-up, not blocking:** password-reset needs an email-sending provider (Resend/Postmark/SES). Still stubbed/deferred post-MVP, per the original plan.
+- [ ] **Follow-up, not blocking:** `apps/web`'s `AuthContext` keeps the access token in memory only (no silent-refresh-on-page-load yet) — a full page refresh currently logs the user out even though their refresh cookie is still valid server-side. Revisit as part of Phase 3's frontend wiring.
+- [ ] **Follow-up, not blocking:** rate-limit `/api/auth/login` and `/api/auth/signup` specifically (the global `RATE_LIMIT_MAX` applies, but a tighter per-route limit would slow down credential-stuffing/enumeration attempts).
 
 ---
 

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getJson } from "../../lib/apiClient.js";
 import { useAuth } from "../../lib/auth/AuthContext.js";
-import { CompletionsResponseSchema } from "./types.js";
+import { CompletionsResponseSchema } from "@sudoku-2077/api-types";
 
 export function useCompletions() {
   const { accessToken } = useAuth();

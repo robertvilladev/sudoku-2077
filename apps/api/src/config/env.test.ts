@@ -3,7 +3,10 @@ import { parseEnv } from "./env.js";
 
 describe("parseEnv", () => {
   it("applies defaults when optional vars are absent", () => {
-    const env = parseEnv({ DATABASE_URL: "postgresql://u:p@localhost:5432/db" });
+    const env = parseEnv({
+      DATABASE_URL: "postgresql://u:p@localhost:5432/db",
+      JWT_ACCESS_SECRET: "test-secret",
+    });
     expect(env.PORT).toBe(3000);
     expect(env.MIN_POOL_SIZE).toBe(20);
     expect(env.CORS_ORIGINS).toEqual([]);
@@ -12,6 +15,7 @@ describe("parseEnv", () => {
   it("parses CORS_ORIGINS as a comma-separated list", () => {
     const env = parseEnv({
       DATABASE_URL: "postgresql://u:p@localhost:5432/db",
+      JWT_ACCESS_SECRET: "test-secret",
       CORS_ORIGINS: "http://localhost:5173,https://sudoku-2077.example.com",
     });
     expect(env.CORS_ORIGINS).toEqual(["http://localhost:5173", "https://sudoku-2077.example.com"]);
@@ -23,7 +27,24 @@ describe("parseEnv", () => {
 
   it("throws when PORT is not a positive integer", () => {
     expect(() =>
-      parseEnv({ DATABASE_URL: "postgresql://u:p@localhost:5432/db", PORT: "not-a-number" })
+      parseEnv({
+        DATABASE_URL: "postgresql://u:p@localhost:5432/db",
+        JWT_ACCESS_SECRET: "test-secret",
+        PORT: "not-a-number",
+      })
     ).toThrow();
+  });
+
+  it("requires JWT_ACCESS_SECRET", () => {
+    expect(() => parseEnv({ DATABASE_URL: "postgresql://u:p@localhost:5432/db" })).toThrow();
+  });
+
+  it("applies JWT defaults when only the secret is set", () => {
+    const env = parseEnv({
+      DATABASE_URL: "postgresql://u:p@localhost:5432/db",
+      JWT_ACCESS_SECRET: "test-secret",
+    });
+    expect(env.JWT_ACCESS_TTL).toBe("15m");
+    expect(env.REFRESH_TOKEN_TTL_DAYS).toBe(30);
   });
 });

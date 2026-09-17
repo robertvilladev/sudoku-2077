@@ -1,11 +1,11 @@
 import { http, HttpResponse } from "msw";
 import {
+  AuthResponseSchema,
+  CompletionsResponseSchema,
   DailyChallengeResponseSchema,
   PublicPuzzleSchema,
   ValidatePuzzleResponseSchema,
 } from "@sudoku-2077/api-types";
-import { AuthResponseSchema } from "../../features/auth/types.js";
-import { CompletionsResponseSchema } from "../../features/profile/types.js";
 
 const API_BASE_URL = "http://localhost:3000";
 

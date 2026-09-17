@@ -10,6 +10,9 @@ const EnvSchema = z.object({
     .optional()
     .transform((value) => (value ? value.split(",").map((origin) => origin.trim()).filter(Boolean) : [])),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  JWT_ACCESS_SECRET: z.string().min(1, "JWT_ACCESS_SECRET is required"),
+  JWT_ACCESS_TTL: z.string().default("15m"),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

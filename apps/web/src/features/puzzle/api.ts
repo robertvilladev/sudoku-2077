@@ -32,7 +32,7 @@ export function usePuzzle(id: string) {
 
 export function useValidatePuzzle(id: string) {
   return useMutation({
-    mutationFn: (board: string) =>
-      postJson(`/api/puzzles/${id}/validate`, ValidatePuzzleResponseSchema, { board }),
+    mutationFn: (payload: { board: string; timeSeconds: number; mistakeCount: number; maxCombo: number }) =>
+      postJson(`/api/puzzles/${id}/validate`, ValidatePuzzleResponseSchema, payload),
   });
 }
