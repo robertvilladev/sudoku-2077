@@ -15,7 +15,7 @@
     "dev:api": "npm run dev --workspace apps/api",
     "dev:web": "npm run dev --workspace apps/web",
     "replenish": "npm run replenish --workspace apps/api",
-    "prepare": "husky"
+    "prepare": "npm run build --workspace packages/api-types --workspace packages/sudoku-core && npm run prisma:generate --workspace apps/api && husky"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": "eslint --fix",
