@@ -5,10 +5,10 @@ Backend "sudoku machine": generates puzzles, classifies them by real difficulty 
 ## Layout
 
 - `packages/sudoku-core` — generator, brute-force solver (uniqueness checking), logical/technique solver, difficulty classifier. Pure TS, no HTTP/DB dependencies.
-- `packages/api-types` — shared Zod schemas/DTOs for the API's request/response shapes. Any future client (web, React Native) imports this instead of redeclaring types.
+- `packages/api-types` — shared Zod schemas/DTOs for the API's request/response shapes. Any future client (web, Flutter) imports this instead of redeclaring types.
 - `apps/api` — Fastify server, Prisma schema, routes, and the pool-replenish job.
 - `apps/web` — Vite + React + TS web client (Phase 2 MVP), consuming `apps/api` via `@sudoku-2077/api-types`.
-- `apps/mobile` — reserved for later (Phase 3), not scaffolded yet.
+- `apps/mobile` — Flutter mobile client (Phase 5). Not an npm workspace; built with the Flutter SDK, not `npm`.
 
 ## Setup
 
@@ -59,11 +59,11 @@ Tests still mock them via MSW (`src/test/msw/handlers.ts`), typed against the re
 
 Three separate free-tier services, chosen because `apps/api` is a long-running Fastify process (not a serverless function) plus a separate background job — Vercel alone can't host it:
 
-| Piece | Host | Notes |
-| --- | --- | --- |
-| `apps/web` | **Vercel** | Static/SPA build, free Hobby plan |
-| `apps/api` | **Render** (free web service, see `render.yaml`) | No card required; free tier spins down after ~15 min idle (cold start on next request) |
-| Postgres | **Neon** (free tier) | No card required, doesn't expire; use the pooled connection string |
+| Piece                   | Host                                                                      | Notes                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `apps/web`              | **Vercel**                                                                | Static/SPA build, free Hobby plan                                                                  |
+| `apps/api`              | **Render** (free web service, see `render.yaml`)                          | No card required; free tier spins down after ~15 min idle (cold start on next request)             |
+| Postgres                | **Neon** (free tier)                                                      | No card required, doesn't expire; use the pooled connection string                                 |
 | `npm run replenish` job | **GitHub Actions** scheduled workflow (`.github/workflows/replenish.yml`) | Reuses existing CI infra instead of a paid cron add-on; runs daily against the Neon `DATABASE_URL` |
 
 ### One-time manual setup
@@ -75,7 +75,7 @@ Do these in order — each later step needs a URL produced by the one before it.
    - `DATABASE_URL` → the Neon pooled connection string from step 1
    - `DIRECT_URL` → the Neon direct connection string from step 1 (needed for `prisma migrate deploy` in the build command — the pooled URL can't run migrations)
    - `CORS_ORIGINS` → leave empty for now, come back after step 3
-   Deploy, then note the service URL Render assigns (e.g. `https://sudoku-2077-api.onrender.com`).
+     Deploy, then note the service URL Render assigns (e.g. `https://sudoku-2077-api.onrender.com`).
 3. **Vercel** — import this repo as a new project, leaving **Root Directory** at the repo root. This is an npm workspaces monorepo — `apps/web` depends on `packages/api-types`/`packages/sudoku-core`, which only exist as built output after a root-level build, so don't scope Root Directory to `apps/web`. The committed `vercel.json` already sets the build/output commands for this; Vercel picks it up automatically. Add an environment variable `VITE_API_BASE_URL` set to the Render URL from step 2. Deploy, then note the Vercel domain (e.g. `https://sudoku-2077.vercel.app`).
 4. **Back to Render** — set `CORS_ORIGINS` to the Vercel domain from step 3 (comma-separate if you add more origins later, e.g. a custom domain). Saving triggers a redeploy.
 5. **GitHub Actions** — in this repo's Settings → Secrets and variables → Actions, add a secret named `PROD_DATABASE_URL` with the same Neon **pooled** connection string used for `DATABASE_URL` in step 2. The `replenish.yml` workflow uses it on its daily schedule.
