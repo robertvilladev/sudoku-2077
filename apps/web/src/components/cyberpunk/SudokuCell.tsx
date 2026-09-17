@@ -52,9 +52,11 @@ export function SudokuCell({
           ? "bg-[color-mix(in_srgb,oklch(66%_0.16_25)_16%,transparent)]"
           : isSelected
             ? "z-10 bg-[color-mix(in_srgb,var(--color-accent)_10%,transparent)]"
-            : isPeerHighlighted
-              ? "bg-[color-mix(in_srgb,var(--color-accent)_6%,transparent)]"
-              : "bg-transparent"
+            : isSameValueHighlighted
+              ? "bg-[color-mix(in_srgb,var(--color-accent)_8%,transparent)]"
+              : isPeerHighlighted
+                ? "bg-[color-mix(in_srgb,var(--color-accent)_6%,transparent)]"
+                : "bg-transparent"
       )}
     >
       {isSelected &&
@@ -80,8 +82,11 @@ export function SudokuCell({
         ) : (
           <span
             className={clsx(
-              "font-semibold",
-              isSameValueHighlighted ? "font-medium text-accent-300" : "text-neutral-200"
+              isSameValueHighlighted
+                ? "font-semibold font-medium text-accent-300"
+                : (isGiven
+                    ? "font-semibold text-neutral-200"
+                    : "font-medium text-neutral-400")
             )}
           >
             {value}

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { motion, useAnimationControls } from "motion/react";
+import confetti from "canvas-confetti";
 import type { DifficultyTier } from "@sudoku-2077/api-types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +18,7 @@ import { useBoardState } from "../features/puzzle/useBoardState.js";
 import { useRerollPuzzle } from "../features/puzzle/useRerollPuzzle.js";
 import { useGameTimer } from "../features/puzzle/useGameTimer.js";
 import { clearProgress, readValidProgress, writeProgress } from "../features/puzzle/progressStorage.js";
-import { playSfx } from "../lib/audio/sfx.js";
+import { playSfx, startAmbientHum, stopAmbientHum } from "../lib/audio/sfx.js";
 
 export function PuzzleRoute() {
   const { id = "" } = useParams();
@@ -43,6 +45,7 @@ function PuzzleBoard({
   const { reroll, isLoading: isRerolling } = useRerollPuzzle(difficulty);
   const timer = useGameTimer(readValidProgress(puzzleId, givens.length)?.elapsedSeconds ?? 0);
   const settings = useSettings();
+  const shakeControls = useAnimationControls();
   const [isPaused, setIsPaused] = useState(false);
   const [validatedBoardString, setValidatedBoardString] = useState<string | null>(null);
 
@@ -93,11 +96,12 @@ function PuzzleBoard({
   // actual transition, not on every render. playSfx itself is settings-unaware; gate here.
   const prevMistakeCountRef = useRef(board.mistakeCount);
   useEffect(() => {
-    if (settings.soundOn && board.mistakeCount > prevMistakeCountRef.current) {
-      playSfx("error");
+    if (board.mistakeCount > prevMistakeCountRef.current) {
+      if (settings.soundOn) playSfx("error");
+      if (settings.scanlineOn) shakeControls.start({ x: [0, -6, 6, -4, 4, 0], transition: { duration: 0.3 } });
     }
     prevMistakeCountRef.current = board.mistakeCount;
-  }, [board.mistakeCount, settings.soundOn]);
+  }, [board.mistakeCount, settings.soundOn, settings.scanlineOn, shakeControls]);
 
   const prevGridRef = useRef(board.grid);
   useEffect(() => {
@@ -118,15 +122,23 @@ function PuzzleBoard({
 
   const prevIsWonRef = useRef(isWon);
   useEffect(() => {
-    if (settings.soundOn && isWon && !prevIsWonRef.current) {
-      playSfx("win");
+    if (isWon && !prevIsWonRef.current) {
+      if (settings.soundOn) playSfx("win");
+      if (settings.scanlineOn)
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.4 }, disableForReducedMotion: true });
     }
     prevIsWonRef.current = isWon;
-  }, [isWon, settings.soundOn]);
+  }, [isWon, settings.soundOn, settings.scanlineOn]);
+
+  useEffect(() => {
+    if (settings.humOn) startAmbientHum();
+    else stopAmbientHum();
+    return stopAmbientHum;
+  }, [settings.humOn]);
 
   return (
     <PageFlicker>
-      <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-4">
+      <motion.div animate={shakeControls} className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-4">
         <HudBar
           elapsedSeconds={timer.elapsedSeconds}
           mistakeCount={board.mistakeCount}
@@ -150,7 +162,17 @@ function PuzzleBoard({
           </div>
         )}
 
-        <SudokuGrid board={board} />
+        {settings.scanlineOn ? (
+          <motion.div
+            initial={{ opacity: 0, filter: "blur(6px)" }}
+            animate={{ opacity: 1, filter: "blur(0px)" }}
+            transition={{ duration: 0.35 }}
+          >
+            <SudokuGrid board={board} />
+          </motion.div>
+        ) : (
+          <SudokuGrid board={board} />
+        )}
 
         <NumberPad
           grid={board.grid}
@@ -249,6 +271,7 @@ function PuzzleBoard({
                 value={settings.autoClearNotesOn}
                 onToggle={settings.toggleAutoClearNotes}
               />
+              <SettingRow label="AMBIENT HUM" value={settings.humOn} onToggle={settings.toggleHum} />
             </div>
             <DialogFooter>
               <Button
@@ -273,7 +296,7 @@ function PuzzleBoard({
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </motion.div>
     </PageFlicker>
   );
 }
