@@ -16,16 +16,17 @@ enum Difficulty {
 }
 
 model Puzzle {
-  id              String          @id @default(cuid())
+  id              String             @id @default(cuid())
   givens          String
   solution        String
   difficulty      Difficulty
   difficultyScore Int
   techniques      String[]
   givensCount     Int
-  createdAt       DateTime        @default(now())
-  servedCount     Int             @default(0)
+  createdAt       DateTime           @default(now())
+  servedCount     Int                @default(0)
   dailyChallenge  DailyChallenge?
+  completions     PuzzleCompletion[]
 
   @@index([difficulty, servedCount])
 }
@@ -35,4 +36,39 @@ model DailyChallenge {
   date     DateTime @unique @db.Date
   puzzleId String   @unique
   puzzle   Puzzle   @relation(fields: [puzzleId], references: [id])
+}
+
+model User {
+  id            String             @id @default(cuid())
+  email         String             @unique
+  passwordHash  String
+  createdAt     DateTime           @default(now())
+  refreshTokens RefreshToken[]
+  completions   PuzzleCompletion[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model PuzzleCompletion {
+  id           String   @id @default(cuid())
+  userId       String
+  puzzleId     String
+  completedAt  DateTime @default(now())
+  timeSeconds  Int
+  mistakeCount Int
+  maxCombo     Int
+  user         User     @relation(fields: [userId], references: [id])
+  puzzle       Puzzle   @relation(fields: [puzzleId], references: [id])
+
+  @@index([userId])
 }

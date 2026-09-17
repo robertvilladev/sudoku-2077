@@ -16,6 +16,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, schema: z.ZodType<T>, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...init.headers },
   });
   const body = await response.json().catch(() => undefined);

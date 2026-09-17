@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     env: {
       DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/sudoku_2077?schema=public",
+      JWT_ACCESS_SECRET: "test-secret",
     },
     hookTimeout: 20_000,
     testTimeout: 20_000,

@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { postJson } from "../../lib/apiClient.js";
 import { useAuth } from "../../lib/auth/AuthContext.js";
-import { AuthResponseSchema, type LoginRequest, type SignupRequest } from "./types.js";
+import { AuthResponseSchema, type LoginRequest, type SignupRequest } from "@sudoku-2077/api-types";
 
 export function useLogin() {
   const { login } = useAuth();

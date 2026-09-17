@@ -37,9 +37,10 @@ thin `src/lib/apiClient.ts` that parses every response against the shared `@sudo
 schemas. Tests are Vitest + React Testing Library, colocated as `*.test.ts(x)`, with network calls
 mocked via MSW (`src/test/msw/handlers.ts`) — plus one Playwright smoke spec under `e2e/`.
 
-Login/signup/profile call provisional endpoints (`/api/auth/*`, `/api/profile/completions`) that don't
-exist in `apps/api` yet — they're mocked in tests and will 404 against the real API until Phase 1 (auth)
-ships. See `apps/web/src/features/auth/types.ts` and `.../profile/types.ts` for the provisional contract.
+Login/signup/profile call real `apps/api` endpoints (`/api/auth/*`, `/api/profile/completions`) since
+Phase 1 (auth) shipped — see `docs/superpowers/specs/2026-09-17-phase1-auth-design.md` for the design.
+Tests still mock them via MSW (`src/test/msw/handlers.ts`), typed against the real
+`@sudoku-2077/api-types` schemas rather than a provisional local contract.
 
 ## API
 
