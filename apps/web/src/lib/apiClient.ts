@@ -43,3 +43,8 @@ export function postJson<T>(
 ): Promise<T> {
   return request(path, schema, { ...init, method: "POST", body: JSON.stringify(body) });
 }
+
+// Shared by every caller that attaches the access token by hand (profile completions, auth logout).
+export function bearerHeaders(token: string | null | undefined): HeadersInit {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}

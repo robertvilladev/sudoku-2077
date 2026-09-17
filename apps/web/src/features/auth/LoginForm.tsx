@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { ApiError } from "../../lib/apiClient.js";
 import { useLogin } from "./api.js";
 
 export function LoginForm() {
@@ -32,7 +33,11 @@ export function LoginForm() {
       <button type="submit" disabled={login.isPending}>
         Log in
       </button>
-      {login.isError && <p role="alert">Login failed. Check your credentials.</p>}
+      {login.isError && (
+        <p role="alert">
+          {login.error instanceof ApiError ? login.error.message : "Login failed. Check your credentials."}
+        </p>
+      )}
     </form>
   );
 }

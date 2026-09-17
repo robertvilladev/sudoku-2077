@@ -4,8 +4,12 @@ import { useAuth } from "../../lib/auth/AuthContext.js";
 import { useCompletions } from "./api.js";
 
 export function ProfilePage() {
-  const { accessToken } = useAuth();
+  const { accessToken, isInitializing } = useAuth();
   const completions = useCompletions();
+
+  if (isInitializing) {
+    return <p className="p-8 font-mono text-sm text-neutral-500">Loading…</p>;
+  }
 
   if (!accessToken) {
     return <p className="p-8 font-mono text-sm text-neutral-500">Log in to see your profile.</p>;
