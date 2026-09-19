@@ -1,6 +1,6 @@
 # Roadmap: from current backend to a robust MVP
 
-Current state: the puzzle generator/classifier/pool backend is built and verified (`packages/sudoku-core`, `packages/api-types`, `apps/api`), and Phase 0 (backend hardening), Phase 1 (auth), and Phase 2 (web MVP client, including the cyberpunk re-theme) have shipped — see `README.md`. Phase 3 (wiring the frontend to the now-live auth endpoints) is next.
+Current state: the puzzle generator/classifier/pool backend is built and verified (`packages/sudoku-core`, `packages/api-types`, `apps/api`), and Phase 0 (backend hardening), Phase 1 (auth), and Phase 2 (web MVP client, including the cyberpunk re-theme) have shipped — see `README.md`. Phase 3 (wiring the frontend to the now-live auth endpoints) has landed; remaining work is Phase 3's follow-ups plus the Flutter mobile client (Phase 5).
 
 Guiding principle: **Phase 0 comes first.** Auth, the web client, and a leaderboard should land on a backend that's already hardened, not get bolted onto one that isn't. Skipping Phase 0 means re-doing security/observability work later under a live user base instead of an empty one.
 
@@ -45,7 +45,7 @@ Guiding principle: **Phase 0 comes first.** Auth, the web client, and a leaderbo
 
 **Status: shipped.** `apps/web` (Vite + React + TS) exists, consuming `apps/api` directly and typed against `@sudoku-2077/api-types`, with the cyberpunk/Nocturne re-theme from PR #4 (Tailwind v4 + shadcn/ui + Motion + Phosphor icons + JetBrains Mono).
 
-- [x] `apps/web` scaffolded (Vite + React + TS + React Query), kept separate from the future React Native mobile client.
+- [x] `apps/web` scaffolded (Vite + React + TS + React Query), kept separate from the future Flutter mobile client.
 - [x] Core screens: title/menu, difficulty picker, daily challenge, puzzle board (grid input + calls to `/validate`), basic profile page listing past completions.
 - [x] Login/signup **UI** exists (`LoginForm`/`SignupForm`), but calls provisional endpoints (`/api/auth/*`) that don't exist until Phase 1 ships — non-functional until then, mocked in tests via MSW.
 - [x] Deploy target: decided and live — Vercel for `apps/web`, Render (free web service) for `apps/api`, Neon (free tier) for Postgres, and a GitHub Actions scheduled workflow for the pool-replenish job (Vercel's serverless model doesn't fit a long-running Fastify server). Config lives in `render.yaml` and `.github/workflows/replenish.yml`; manual account setup steps are in `README.md`'s Deployment notes.
@@ -65,6 +65,7 @@ Guiding principle: **Phase 0 comes first.** Auth, the web client, and a leaderbo
 - [x] Confirm-before-quit when abandoning an in-progress puzzle
 
 Deferred backlog from the same review (not in the detailed plan above, revisit after the client feels solid):
+
 - [ ] Hint system (reveal one digit at a cost) and a "fill all candidate notes" helper
 - [ ] Redo (undo already exists)
 - [ ] First-run controls tutorial (fits the boot-sequence terminal aesthetic)
@@ -80,7 +81,7 @@ Deferred backlog from the same review (not in the detailed plan above, revisit a
 
 **Status: shipped.** The reskin already laid the groundwork for this — `motion` is already a dependency used for micro-interactions (`SudokuCell.tsx`'s selection glow, `GlitchText.tsx`), and SFX is already synthesized live via the Web Audio API (`apps/web/src/lib/audio/sfx.ts`) rather than shipped as asset files. This phase finishes that direction rather than starting a new one. Full task-by-task plan: `docs/superpowers/plans/2026-09-16-game-feel-effects.md`.
 
-The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `<button role="gridcell">` grid) — a canvas/WebGL renderer or game engine (PixiJS/Phaser) would mean reimplementing keyboard navigation and accessibility that DOM+React already give for free, for a board that's fundamentally a grid UI, not a game world. Deferred, not planned: **if** the app ever needs real sprite/scene visuals (e.g. a shared renderer with `apps/mobile`, or non-sudoku minigames), revisit PixiJS as a dedicated effects/board-overlay renderer then — not needed for this phase.
+The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `<button role="gridcell">` grid) — a canvas/WebGL renderer or game engine (PixiJS/Phaser) would mean reimplementing keyboard navigation and accessibility that DOM+React already give for free, for a board that's fundamentally a grid UI, not a game world. Deferred, not planned: **if** the app ever needs real sprite/scene visuals (e.g. non-sudoku minigames), revisit PixiJS as a dedicated effects/board-overlay renderer then — not needed for this phase.
 
 - [x] Escalating combo glow (`ComboBadge.tsx`)
 - [x] Animated "decrypting" puzzle-load transition
@@ -106,4 +107,32 @@ The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `
 - [ ] Streaks / stats profile expansion, including a daily-challenge streak counter and history/calendar view.
 - [ ] Achievements/badges (first win at each difficulty, streak milestones, etc.) — reuses `PuzzleCompletion` data.
 - [ ] Shareable results ("Wordle-style" spoiler-free summary of time/difficulty/mistakes) — the mockup's win-dialog SHARE action is currently unused.
-- [ ] React Native mobile app, once the API contract and auth flow are proven out by the web client.
+
+---
+
+## Phase 5 — Flutter mobile client
+
+`apps/mobile`, a Flutter app (Android + iOS) consuming the same `apps/api` as the web client. Deliberately **no auth** — anonymous play only, which works because `/api/puzzles/:id/validate` uses `optionalAuthenticate` and accepts unauthenticated requests. Not an npm workspace (no `package.json`), so it is invisible to the root `npm run build`/`test`/`lint` fan-out and to `ci.yml` by design; it builds with the Flutter SDK instead.
+
+`packages/sudoku-core` is **not** ported to Dart. The solution never leaves the server (`apps/api/src/mappers.ts` strips it) and validation is server-side, so the client needs only `stringToGrid`, `peersOf` and conflict detection — roughly 20 lines inline. Revisit a port only if offline play is wanted; a client-side hint system would not justify one either, since a `/hint` endpoint can read the already-stored `solution` column without invoking the solver.
+
+- [ ] **Scaffold + API client** — `flutter create apps/mobile`, hand-written DTOs for `PublicPuzzle` / `ValidatePuzzleResponse` against `package:http`. No codegen for three shapes.
+- [ ] **Board state** — a `ChangeNotifier` port of `apps/web`'s `useBoardState` reducer (grid, notes, undo history, mistake/combo counters). Mirror web's mistake rule exactly: a mistake is a **peer conflict**, not a solution mismatch.
+- [ ] **Basic loop screens** — title → difficulty picker → board (grid, number pad with remaining counts, notes mode, undo, erase, timer, 3-mistake lose dialog, win dialog via `/validate`).
+- [ ] **Progress persistence** — `shared_preferences`, mirroring web's `sudoku2077.progress.<puzzleId>` shape. Local only, never synced, so a puzzle started on web will not resume on mobile.
+- [ ] **Theme parity** — cyberpunk palette hand-converted from web's oklch values to sRGB hex (Flutter has no oklch), JetBrains Mono bundled as a font asset. Flat colours only; glow and scanline effects are the Phase 2.6 equivalent and are not part of the basic loop.
+- [ ] **Follow-up, not blocking:** a `mobile.yml` CI workflow (`subosito/flutter-action`, `flutter analyze` + `flutter test`, scoped `paths: ['apps/mobile/**']`). Kept out of `ci.yml` so API-only PRs don't pay Flutter SDK setup.
+- [ ] **Follow-up, not blocking:** daily challenge screen (`GET /api/daily-challenge`) — one endpoint and one button, but not part of the basic loop.
+
+---
+
+## Phase 6 — Mobile auth
+
+Deferred out of Phase 5 on purpose. The API's refresh token is an httpOnly cookie scoped `path: /api/auth`, `secure: true`, `sameSite: lax` — correct for a browser, awkward for a native client. Everything except `/api/auth/refresh` and `/api/auth/logout` is pure bearer and needs no change.
+
+- [ ] **Decide the mobile refresh transport** — either a cookie jar in the Dart client, or an opt-in body/header refresh path on `/api/auth/refresh` (today it is cookie-only, no body, no bearer).
+- [ ] **Token storage** — `flutter_secure_storage` for the refresh token; the 15-minute access JWT stays in memory, as on web.
+- [ ] **Refresh-on-401** — doesn't exist on web either (see the Phase 1 follow-up); if built, build it once and mirror the approach on both clients.
+- [ ] **Add `GET /api/auth/me`** — identity currently comes only from signup/login/refresh response bodies, so there is no way to rehydrate a session from a stored token alone.
+- [ ] **Declare `securitySchemes` in the OpenAPI output** — `apps/api/src/openapi.ts` emits none, so `/docs` doesn't describe bearer auth to any client.
+- [ ] **Profile screen** — `GET /api/profile/completions`, unblocked once auth works.

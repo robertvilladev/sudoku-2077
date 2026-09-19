@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { ApiError } from "../../lib/apiClient.js";
 import { useSignup } from "./api.js";
 
 export function SignupForm() {
@@ -32,7 +33,11 @@ export function SignupForm() {
       <button type="submit" disabled={signup.isPending}>
         Sign up
       </button>
-      {signup.isError && <p role="alert">Signup failed. Try a different email.</p>}
+      {signup.isError && (
+        <p role="alert">
+          {signup.error instanceof ApiError ? signup.error.message : "Signup failed. Try a different email."}
+        </p>
+      )}
     </form>
   );
 }

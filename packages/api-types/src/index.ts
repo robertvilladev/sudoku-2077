@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * The wire contract shared between the API and any client (web, React Native, ...). Kept dependency-free
+ * The wire contract shared between the API and any client (web, Flutter, ...). Kept dependency-free
  * from @sudoku-2077/sudoku-core on purpose so a client can import just this package without pulling in
  * the solver/generator.
  */
