@@ -4,7 +4,15 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["**/dist/**", "**/node_modules/**", "**/.claude/**", "Cyberpunk Sudoku UI Mockups/**"] },
+  {
+    ignores: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/.claude/**",
+      "apps/mobile/**",
+      "Cyberpunk Sudoku UI Mockups/**",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

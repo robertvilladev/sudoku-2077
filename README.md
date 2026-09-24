@@ -42,6 +42,13 @@ Phase 1 (auth) shipped — see `docs/superpowers/specs/2026-09-17-phase1-auth-de
 Tests still mock them via MSW (`src/test/msw/handlers.ts`), typed against the real
 `@sudoku-2077/api-types` schemas rather than a provisional local contract.
 
+## Mobile client (`apps/mobile`)
+
+Flutter (Android + iOS), anonymous play only. Needs the Flutter SDK, not `npm`: see
+`apps/mobile/README.md` for setup and `flutter run --dart-define=API_BASE_URL=...`. It is invisible to
+`npm run build/test/lint` and to `ci.yml`; `.github/workflows/mobile.yml` runs `dart format`,
+`flutter analyze` and `flutter test` on PRs that touch `apps/mobile/**`. iOS is not built in CI.
+
 ## API
 
 - `GET /api/daily-challenge` — today's puzzle (UTC), givens only
