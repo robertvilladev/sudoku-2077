@@ -116,13 +116,39 @@ The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `
 
 `packages/sudoku-core` is **not** ported to Dart. The solution never leaves the server (`apps/api/src/mappers.ts` strips it) and validation is server-side, so the client needs only `stringToGrid`, `peersOf` and conflict detection — roughly 20 lines inline. Revisit a port only if offline play is wanted; a client-side hint system would not justify one either, since a `/hint` endpoint can read the already-stored `solution` column without invoking the solver.
 
-- [ ] **Scaffold + API client** — `flutter create apps/mobile`, hand-written DTOs for `PublicPuzzle` / `ValidatePuzzleResponse` against `package:http`. No codegen for three shapes.
+- [x] **Scaffold** — `apps/mobile` created (`com.robertvilladev.sudoku2077`, Android + iOS, Flutter 3.47.5 pinned in `pubspec.yaml`), feature-first layout, `--dart-define=API_BASE_URL` config, placeholder app with a smoke test, and `.github/workflows/mobile.yml` (path-filtered `dart format` + `flutter analyze` + `flutter test`). State pattern: `ChangeNotifier` + `provider` (added with the first notifier). Design: `docs/superpowers/specs/2026-09-19-flutter-mobile-setup-design.md`. iOS is unverified (no Mac / macOS CI job).
+- [ ] **API client** — hand-written DTOs for `PublicPuzzle` / `ValidatePuzzleResponse` against `package:http`. No codegen for three shapes. Use a request timeout that tolerates a Render free-tier cold start.
 - [ ] **Board state** — a `ChangeNotifier` port of `apps/web`'s `useBoardState` reducer (grid, notes, undo history, mistake/combo counters). Mirror web's mistake rule exactly: a mistake is a **peer conflict**, not a solution mismatch.
 - [ ] **Basic loop screens** — title → difficulty picker → board (grid, number pad with remaining counts, notes mode, undo, erase, timer, 3-mistake lose dialog, win dialog via `/validate`).
 - [ ] **Progress persistence** — `shared_preferences`, mirroring web's `sudoku2077.progress.<puzzleId>` shape. Local only, never synced, so a puzzle started on web will not resume on mobile.
 - [ ] **Theme parity** — cyberpunk palette hand-converted from web's oklch values to sRGB hex (Flutter has no oklch), JetBrains Mono bundled as a font asset. Flat colours only; glow and scanline effects are the Phase 2.6 equivalent and are not part of the basic loop.
-- [ ] **Follow-up, not blocking:** a `mobile.yml` CI workflow (`subosito/flutter-action`, `flutter analyze` + `flutter test`, scoped `paths: ['apps/mobile/**']`). Kept out of `ci.yml` so API-only PRs don't pay Flutter SDK setup.
 - [ ] **Follow-up, not blocking:** daily challenge screen (`GET /api/daily-challenge`) — one endpoint and one button, but not part of the basic loop.
+
+### Phase 5 — pending items, corner cases, and things to consider
+
+Surfaced while landing the scaffold (design: `docs/superpowers/specs/2026-09-19-flutter-mobile-setup-design.md`). None block the next bullets, but each one bites later if forgotten.
+
+**Pending (deferred on purpose)**
+
+- [ ] **Add `provider`** to `pubspec.yaml` together with the first `ChangeNotifier` (Board state) and provide `ApiClient` at the root. Not added at scaffold time because nothing used it yet.
+- [ ] **Navigation package** (`go_router` vs plain `Navigator`) — decide in "Basic loop screens"; three screens may not justify a dependency.
+- [ ] **`flutter build apk` in `mobile.yml`** — add once a native plugin (`shared_preferences`) lands, so plugin/Gradle breakage is caught in CI and not on a dev machine.
+- [ ] **iOS is unverified.** It can't be built on Windows or the ubuntu runner. Needs a Mac or a `macos-latest` CI job (billed at a higher minute multiplier on private repos) before iOS is claimed to work. Also confirm the iOS simulator can reach `http://localhost:3000` (ATS should exempt `localhost`/IPs, but it hasn't been tried).
+- [ ] **Release signing.** `android/app/build.gradle.kts` still signs `release` with the **debug** key (Flutter's template default). Needs a real keystore (kept out of git, injected via CI secrets) before any Play Store upload. Store publishing itself is out of scope for Phase 5.
+- [ ] **App identity polish** — launcher icon and splash are Flutter defaults; the Android label is `sudoku2077` and the iOS display name `Sudoku2077` (should read "Sudoku 2077"). The application ID `com.robertvilladev.sudoku2077` is effectively permanent once published.
+
+**Corner cases to keep in mind**
+
+- **Release builds point at the wrong host by default.** `lib/core/config.dart` defaults `API_BASE_URL` to `http://10.0.2.2:3000` (Android emulator → host). A release build made without `--dart-define=API_BASE_URL=https://...` ships that address. Consider failing the build/startup in release mode when the define is missing, and make the release/CI build command always pass it.
+- **Cleartext HTTP is debug-only** (`android/app/src/debug/AndroidManifest.xml`). The production API must stay HTTPS; a release build talking to an `http://` URL will fail silently on Android 9+.
+- **Render cold start.** The free tier sleeps after ~15 min idle, so the first request can take tens of seconds. The API client needs a generous timeout, a visible "waking the server" loading state, and retry-on-timeout for idempotent GETs (never auto-retry `/validate` blindly).
+- **`CORS_ORIGINS` needs no change** — native HTTP sends no `Origin` header. Don't add mobile origins there.
+- **Contract drift.** Dart DTOs are hand-written against `@sudoku-2077/api-types`, and `mobile.yml` is path-filtered, so an `api-types`/API change does **not** run mobile CI. If the API surface grows past the current three shapes, add shared JSON fixtures (API tests emit them, Dart tests parse them) or run the mobile tests when `packages/api-types/**` changes.
+- **Path-filtered CI + branch protection.** Safe today because the repo has no required status checks. If one is ever required, a skipped path-filtered workflow never reports and blocks the PR — add an always-running gate job first.
+- **Flutter version bumps** touch two places: `environment: flutter:` in `apps/mobile/pubspec.yaml` (CI reads it) and the local SDK (`C:\src\flutter`-style install, `flutter upgrade`/checkout of the tag). Bump them together in one PR.
+- **Prettier does not format `apps/mobile/`** (`.prettierignore`) and ESLint ignores it; Dart formatting is enforced by `dart format` in CI only. The husky pre-commit hook does not run `dart format`, so unformatted Dart is caught in CI, not at commit time.
+- **Local-only progress.** `shared_preferences` state is per device and never synced, and `PuzzleCompletion` is only recorded for authenticated solves — so anonymous mobile wins leave no server-side record until Phase 6.
+- **Mistake rule parity.** A mistake is a _peer conflict_, not a solution mismatch (as on web). If web's rule ever changes, mobile's port of `useBoardState` must change in the same breath — there is no shared code to keep them aligned.
 
 ---
 
