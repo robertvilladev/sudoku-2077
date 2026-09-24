@@ -38,3 +38,5 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test
+      - name: Generator/solver audit
+        run: npm run audit --workspace packages/sudoku-core -- 25

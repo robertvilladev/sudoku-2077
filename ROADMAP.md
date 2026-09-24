@@ -1,6 +1,6 @@
 # Roadmap: from current backend to a robust MVP
 
-Current state: the puzzle generator/classifier/pool backend is built and verified (`packages/sudoku-core`, `packages/api-types`, `apps/api`), and Phase 0 (backend hardening), Phase 1 (auth), and Phase 2 (web MVP client, including the cyberpunk re-theme) have shipped — see `README.md`. Phase 3 (wiring the frontend to the now-live auth endpoints) has landed; remaining work is Phase 3's follow-ups plus the Flutter mobile client (Phase 5).
+Current state: the puzzle generator/classifier/pool backend is built and verified (`packages/sudoku-core`, `packages/api-types`, `apps/api`; hardened in Phase 2.7), and Phase 0 (backend hardening), Phase 1 (auth), and Phase 2 (web MVP client, including the cyberpunk re-theme) have shipped — see `README.md`. Phase 3 (wiring the frontend to the now-live auth endpoints) has landed; remaining work is Phase 3's follow-ups plus the Flutter mobile client (Phase 5).
 
 Guiding principle: **Phase 0 comes first.** Auth, the web client, and a leaderboard should land on a backend that's already hardened, not get bolted onto one that isn't. Skipping Phase 0 means re-doing security/observability work later under a live user base instead of an empty one.
 
@@ -49,7 +49,7 @@ Guiding principle: **Phase 0 comes first.** Auth, the web client, and a leaderbo
 - [x] Core screens: title/menu, difficulty picker, daily challenge, puzzle board (grid input + calls to `/validate`), basic profile page listing past completions.
 - [x] Login/signup **UI** exists (`LoginForm`/`SignupForm`), but calls provisional endpoints (`/api/auth/*`) that don't exist until Phase 1 ships — non-functional until then, mocked in tests via MSW.
 - [x] Deploy target: decided and live — Vercel for `apps/web`, Render (free web service) for `apps/api`, Neon (free tier) for Postgres, and a GitHub Actions scheduled workflow for the pool-replenish job (Vercel's serverless model doesn't fit a long-running Fastify server). Config lives in `render.yaml` and `.github/workflows/replenish.yml`; manual account setup steps are in `README.md`'s Deployment notes.
-- [ ] **Follow-up:** watch the HARD-difficulty pool over the next few daily replenish runs. The first production seed (2026-09-16) only reached 14/20 HARD puzzles before hitting `MAX_GENERATION_ATTEMPTS` in `replenishPool.ts` — harder puzzles are rarer to land on via the random-givens generation strategy. Not blocking (14 is a usable pool, and the daily cron keeps retrying), but if it plateaus below 20 instead of climbing, revisit `MAX_GENERATION_ATTEMPTS` or the givens-range spread (`randomTargetGivens()`) in that file.
+- [x] **Follow-up (resolved by Phase 2.7):** watch the HARD-difficulty pool over the next few daily replenish runs. The first production seed (2026-09-16) only reached 14/20 HARD puzzles before hitting `MAX_GENERATION_ATTEMPTS` in `replenishPool.ts` — harder puzzles are rarer to land on via the random-givens generation strategy. Not blocking (14 is a usable pool, and the daily cron keeps retrying), but if it plateaus below 20 instead of climbing, revisit `MAX_GENERATION_ATTEMPTS` or the givens-range spread (`randomTargetGivens()`) in that file.
 
 ---
 
@@ -93,6 +93,40 @@ The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `
 
 ---
 
+## Phase 2.7 — Puzzle engine robustness & scale
+
+**Status: engine work shipped; per-move mistake checking pending a product decision.** Triggered by a report that on hard puzzles a player could place a digit that was wrong without being flagged. Investigation (2,300 generated puzzles cross-checked against an independent solver) found **no correctness bug in the generator or solvers**: every puzzle had a valid solution, givens matching it, and exactly one solution. The report is explained by the client's mistake rule (below). The investigation did surface real engine problems, fixed here:
+
+| Metric (random sample)                    | Before                                                              | After                                |
+| ----------------------------------------- | ------------------------------------------------------------------- | ------------------------------------ |
+| Tier mix of generated puzzles             | 84% EASY · 5% MEDIUM · **0.2% HARD** · 11% HARDCORE                 | Aimed per tier — see `npm run audit` |
+| Attempts to fill all four 20-puzzle pools | HARD never filled (prod seed stopped at 14/20 after 4,000 attempts) | ~75 attempts, under 3 s              |
+| Avg generation time                       | 66 ms (max ~900 ms)                                                 | 2–13 ms per profile                  |
+| Uniqueness check, hardest known puzzle    | ~600 ms                                                             | a few ms (bitmask solver)            |
+| Techniques known to the grader            | 5                                                                   | 13                                   |
+| Reproducible puzzles                      | no (`Math.random`)                                                  | every stored puzzle has a `seed`     |
+
+- [x] **Independent verification + CI audit.** `packages/sudoku-core/src/testing/referenceChecker.ts` is a deliberately naive solver that shares no code with `solver/`. `npm run audit --workspace packages/sudoku-core` checks every generated puzzle against it (valid solution, givens match, exactly one solution, logical answer matches, seed regenerates). CI runs it with 25 puzzles per profile and fails on any mismatch.
+- [x] **Solution oracle.** `solveLogically(grid, { solution })` checks every step. A technique that places a wrong digit or removes the true candidate throws and names itself. Generation always passes the solution, so a buggy technique can't mis-rate a stored puzzle, and tests pin down the exact technique that broke.
+- [x] **Seeded generation.** `createRng(seed)` (mulberry32). `Puzzle.seed` (new nullable column) stores strings like `HARD:k3j9x2a` or `HARD:k3j9x2a~v1` for variants, and `regeneratePuzzle(seed)` rebuilds the exact puzzle. A bug report can now say "seed X".
+- [x] **Bitmask brute-force solver.** Row/col/box digit masks and MRV branching, the generator's hot path.
+- [x] **Human-style grader.** Techniques, easiest first: hidden/naked single → pointing pair, box/line reduction, naked/hidden pair (MEDIUM) → X-Wing, naked/hidden triple, Swordfish, XY-Wing, XYZ-Wing, naked quad (HARD). Unsolved by all of these → HARDCORE (needs chains/guessing). Weights are about 10× the Sudoku Explainer ratings. `difficultyScore` = Σ weight × uses. HARDCORE scores start at 1000. Existing rows keep their old-scale scores.
+- [x] **Tier-aimed generation with clue steering.** `createPuzzleForTier(tier)`: EASY digs to 36–45 givens. Harder tiers dig until the puzzle is minimal, then, if it overshoots the target tier, add givens back from the solution one at a time until it lands in the target tier. Adding a given can't break uniqueness.
+- [x] **Variants.** `createPuzzleVariant` relabels digits, permutes rows/cols within bands and bands, and optionally transposes (~1.2 trillion variants per puzzle). The logic stays the same and the variant is re-rated. The replenish job multiplies each HARD/HARDCORE find into `VARIANTS_PER_RARE_FIND` (default 2) variants.
+- [x] **Replenish job** aims at the most-starved tier, buckets each puzzle by its honest rating, and stores seeds. The EASY pool only takes puzzles generated with the EASY profile, so it isn't filled with ~24-given singles-only leftovers.
+- [ ] **Per-move mistake checking (needs a decision).** Today a mistake is a _peer conflict_ (`apps/web/src/features/puzzle/useBoardState.ts`). A wrong digit that doesn't repeat a visible digit in its row/col/box is accepted silently and even extends the combo, and it's only caught at `/validate` when the board is full. At the start of a hard puzzle there are ~150 such "wrong but allowed" placements. Big sudoku apps check each move against the solution. Options:
+  1. Include `solution` in `PublicPuzzle`. Simplest, instant, works offline. The solution becomes visible in devtools, which only matters for leaderboard integrity. `/validate` stays the authority for recorded completions.
+  2. A server-side `POST /api/puzzles/:id/check` per placement. Keeps the solution off the client, but adds a round trip per move (painful on a cold Render instance) and is still a per-cell oracle.
+  3. Keep the peer-conflict rule, but stop awarding combo for unverified placements.
+
+  Whichever is chosen, the mobile port (Phase 5 "Board state") must mirror it.
+
+- [ ] **Harder techniques** — simple coloring, X-Chains/XY-Chains, then AIC/forcing chains. These split today's HARDCORE (everything beyond wings) into "EXPERT, still logical" and "requires guessing". Add each with oracle coverage in the seeded technique corpus test.
+- [ ] **Calibrate with player data.** Use `PuzzleCompletion.timeSeconds`/`mistakeCount` to adjust each puzzle's rating (Elo/Glicko-style, like chess puzzle ratings). Flag puzzles whose solve times don't match their tier.
+- [ ] **Scale-out generation** — if pools grow to thousands per tier, run generation in `worker_threads` and dedupe by canonical form (the minimum over the transform group), so variants of an already-stored puzzle aren't counted as new.
+
+---
+
 ## Phase 3 — Auth-dependent client work
 
 - [ ] Wire the existing `LoginForm`/`SignupForm` UI to the real `/api/auth/*` endpoints once Phase 1 ships.
@@ -118,7 +152,7 @@ The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `
 
 - [x] **Scaffold** — `apps/mobile` created (`com.robertvilladev.sudoku2077`, Android + iOS, Flutter 3.47.5 pinned in `pubspec.yaml`), feature-first layout, `--dart-define=API_BASE_URL` config, placeholder app with a smoke test, and `.github/workflows/mobile.yml` (path-filtered `dart format` + `flutter analyze` + `flutter test`). State pattern: `ChangeNotifier` + `provider` (added with the first notifier). Design: `docs/superpowers/specs/2026-09-19-flutter-mobile-setup-design.md`. iOS is unverified (no Mac / macOS CI job).
 - [ ] **API client** — hand-written DTOs for `PublicPuzzle` / `ValidatePuzzleResponse` against `package:http`. No codegen for three shapes. Use a request timeout that tolerates a Render free-tier cold start.
-- [ ] **Board state** — a `ChangeNotifier` port of `apps/web`'s `useBoardState` reducer (grid, notes, undo history, mistake/combo counters). Mirror web's mistake rule exactly: a mistake is a **peer conflict**, not a solution mismatch.
+- [ ] **Board state** — a `ChangeNotifier` port of `apps/web`'s `useBoardState` reducer (grid, notes, undo history, mistake/combo counters). Mirror web's mistake rule exactly: a mistake is a **peer conflict**, not a solution mismatch (under review — see Phase 2.7 "Per-move mistake checking").
 - [ ] **Basic loop screens** — title → difficulty picker → board (grid, number pad with remaining counts, notes mode, undo, erase, timer, 3-mistake lose dialog, win dialog via `/validate`).
 - [ ] **Progress persistence** — `shared_preferences`, mirroring web's `sudoku2077.progress.<puzzleId>` shape. Local only, never synced, so a puzzle started on web will not resume on mobile.
 - [ ] **Theme parity** — cyberpunk palette hand-converted from web's oklch values to sRGB hex (Flutter has no oklch), JetBrains Mono bundled as a font asset. Flat colours only; glow and scanline effects are the Phase 2.6 equivalent and are not part of the basic loop.
