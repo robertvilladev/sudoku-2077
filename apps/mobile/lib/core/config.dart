@@ -5,3 +5,6 @@ const apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'http://10.0.2.2:3000',
 );
+
+/// `--dart-define=USE_MOCK_API=true` serves puzzles from an in-app fake instead of `apps/api`.
+const useMockApi = bool.fromEnvironment('USE_MOCK_API');
