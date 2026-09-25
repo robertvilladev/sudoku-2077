@@ -155,7 +155,7 @@ The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `
 - [x] **Board state** — a `ChangeNotifier` port of `apps/web`'s `useBoardState` reducer (grid, notes, undo history, mistake/combo counters). Mirror web's mistake rule exactly: a mistake is a **peer conflict**, not a solution mismatch (under review — see Phase 2.7 "Per-move mistake checking").
 - [x] **Basic loop screens** — title → difficulty picker → board (grid, number pad with remaining counts, notes mode, undo, erase, timer, 3-mistake lose dialog, win dialog via `/validate`). Also a pause overlay and a confirm-on-back. `--dart-define=USE_MOCK_API=true` runs the whole loop against an in-app fake (see `apps/mobile/README.md`).
 - [ ] **Progress persistence** — `shared_preferences`, mirroring web's `sudoku2077.progress.<puzzleId>` shape. Local only, never synced, so a puzzle started on web will not resume on mobile.
-- [ ] **Theme parity** — cyberpunk palette hand-converted from web's oklch values to sRGB hex (Flutter has no oklch), JetBrains Mono bundled as a font asset. Flat colours only; glow and scanline effects are the Phase 2.6 equivalent and are not part of the basic loop.
+- [ ] **Theme parity** — cyberpunk palette hand-converted from web's oklch values to sRGB hex (Flutter has no oklch), plus the font chosen in Phase 5.5 bundled as a font asset (JetBrains Mono until then). Flat colours only; glow, scanline, animation and sound are Phase 5.5, not part of the basic loop.
 - [ ] **Follow-up, not blocking:** daily challenge screen (`GET /api/daily-challenge`) — one endpoint and one button, but not part of the basic loop.
 
 ### Phase 5 — pending items, corner cases, and things to consider
@@ -183,6 +183,31 @@ Surfaced while landing the scaffold (design: `docs/superpowers/specs/2026-09-19-
 - **Prettier does not format `apps/mobile/`** (`.prettierignore`) and ESLint ignores it; Dart formatting is enforced by `dart format` in CI only. The husky pre-commit hook does not run `dart format`, so unformatted Dart is caught in CI, not at commit time.
 - **Local-only progress.** `shared_preferences` state is per device and never synced, and `PuzzleCompletion` is only recorded for authenticated solves — so anonymous mobile wins leave no server-side record until Phase 6.
 - **Mistake rule parity.** A mistake is a _peer conflict_, not a solution mismatch (as on web). If web's rule ever changes, mobile's port of `useBoardState` must change in the same breath — there is no shared code to keep them aligned.
+
+---
+
+## Phase 5.5 — Cyberpunk polish (web + mobile)
+
+Makes both clients feel like the same game, and makes the board react more while staying simple. Everything here ships on **both** `apps/web` and `apps/mobile` unless marked otherwise. Start with a design proof of concept (a static/interactive mockup of the board states below) so the font, colours and effects are decided once and then implemented twice.
+
+- [ ] **Cyberpunk font.** Replace JetBrains Mono with a font that reads as cyberpunk. Pick it in the proof of concept. The digits must stay legible at cell size, so a likely split is a display face for the logo and headings, and a techy mono or semi-mono face for UI and grid digits. Candidates (all SIL OFL, on Google Fonts, available as `@fontsource/*` for web and bundleable as Flutter assets): Orbitron or Audiowide (display only, too wide for body text), Chakra Petch, Oxanium, Share Tech Mono. Use tabular or monospaced digits so the timer doesn't jitter.
+- [ ] **Given vs. player digits, clearly distinct.** Today web makes givens `neutral-200` semibold and entries `neutral-400` medium: two greys that are hard to tell apart, and the same-value highlight recolours both to `accent-300`, which erases the difference. Mobile uses white bold vs. `accent-300`. Target, identical on both clients:
+  - Givens are "hardwired": neutral/white, heavier weight, plus a faint cell tint so they read as fixed.
+  - Player digits are "injected": the accent colour, regular weight, no cell tint.
+  - Highlights (selected, peer, same value, conflict) change the **cell background only**, never the digit's colour. The only exception is conflict red, so the given/player distinction survives every highlight.
+- [ ] **Unit-complete effects.** When a row, column or 3×3 box becomes full with no conflicts:
+  - A one-shot neon **scan sweep** runs along the unit, about 400 ms. Rows sweep horizontally, columns vertically, and boxes flash a corner-bracket glow (web already has `CornerBrackets.tsx`).
+  - Completed **boxes** keep a very faint persistent tint ("sector secured"). Rows and columns get the sweep only, so a nearly-solved board doesn't turn into a wall of glow.
+  - Completing several units in one move merges into a single pulse radiating from the placed cell, not stacked animations.
+  - A short rising chirp plays, pitched higher for each unit completed at once, plus a light haptic on mobile.
+  - Undo that breaks a unit removes its persistent tint.
+  - It respects the effects/sound settings and reduced motion (`prefers-reduced-motion` on web, `MediaQuery.disableAnimations` on Flutter).
+  - Caveat: under today's peer-conflict rule, "full with no conflicts" is **not** "correct". A completed unit can still hold a wrong digit, so the effect must not claim correctness. If Phase 2.7's per-move decision puts the solution on the client, the effect can use real correctness instead.
+- [ ] **Flutter animations and sounds (mobile only).** Port the Phase 2.6 set:
+  - Visuals: combo glow, screen-shake on a mistake, a "decrypting" puzzle-load transition, win-burst particles, a scanline/CRT overlay, and a given/player digit pop-in.
+  - Sounds: place, error, notes toggle and win, plus the unit-complete chirp above. Web synthesizes SFX live with Web Audio. Flutter has no equivalent, so render the web synth patches to short audio assets and play them with a low-latency player (e.g. `audioplayers`/`soloud`), keeping the sound identical across clients.
+  - Haptics (`HapticFeedback`) on mistake, unit complete and win: a mobile-only extra.
+  - Settings: a pause-menu settings panel (sound, effects, haptics, auto-clear notes, ambient hum), persisted with `shared_preferences`, mirroring web's `SettingsContext`.
 
 ---
 
