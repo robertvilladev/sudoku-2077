@@ -29,6 +29,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  audioplayers: ^6.8.1
   flutter:
     sdk: flutter
   http: ^1.6.0
@@ -58,6 +59,30 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Phase 5.5: unit-complete chirps (rendered by tool/render_chirps.dart) and the font licences.
+  assets:
+    - assets/sfx/
+    - assets/fonts/OFL-Oxanium.txt
+    - assets/fonts/OFL-Orbitron.txt
+
+  # Static instances from the upstream repos (sevmeyer/oxanium, googlefonts/orbitron-vf), SIL OFL 1.1.
+  fonts:
+    - family: Oxanium
+      fonts:
+        - asset: assets/fonts/Oxanium-Regular.ttf
+        - asset: assets/fonts/Oxanium-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Oxanium-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Oxanium-Bold.ttf
+          weight: 700
+    - family: Orbitron
+      fonts:
+        - asset: assets/fonts/Orbitron-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Orbitron-ExtraBold.ttf
+          weight: 800
 
   # To add assets to your application, add an assets section, like this:
   # assets:

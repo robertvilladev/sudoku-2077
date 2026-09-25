@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/signal_button.dart';
 import '../../core/theme.dart';
 import 'difficulty_screen.dart';
 
@@ -34,26 +35,43 @@ class TitleScreen extends StatelessWidget {
                             text: '//',
                             style: TextStyle(color: Palette.accent),
                           ),
-                          TextSpan(text: '2077'),
+                          TextSpan(
+                            text: '2077',
+                            style: TextStyle(
+                              color: Palette.signal,
+                              shadows: [
+                                Shadow(
+                                  color: Palette.signalGlow,
+                                  blurRadius: 18,
+                                ),
+                                Shadow(
+                                  color: Color(0x33FCEE0A),
+                                  blurRadius: 50,
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                       style: TextStyle(
+                        fontFamily: displayFont,
                         fontSize: 44,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 3.5,
+                        color: Palette.neutral100,
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                    ),
+                  SignalButton(
+                    label: 'PLAY',
+                    minHeight: 48,
+                    expand: true,
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const DifficultyScreen(),
                       ),
                     ),
-                    child: const Text('PLAY'),
                   ),
                   const OutlinedButton(
                     onPressed: null,

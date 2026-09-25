@@ -16,8 +16,12 @@ class DifficultyScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           children: [
             const Text(
-              '// choose your clearance level',
-              style: TextStyle(fontSize: 12, color: Palette.neutral500),
+              '// CHOOSE YOUR CLEARANCE LEVEL',
+              style: TextStyle(
+                fontSize: 11,
+                letterSpacing: 1.2,
+                color: Palette.signal,
+              ),
             ),
             const SizedBox(height: 16),
             for (final difficulty in Difficulty.values)
@@ -58,13 +62,19 @@ class _TierCard extends StatelessWidget {
               Text(
                 difficulty.wireName,
                 style: const TextStyle(
+                  fontFamily: displayFont,
                   fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4,
                 ),
               ),
               Text(
                 difficulty.flavor,
-                style: const TextStyle(fontSize: 11, color: Palette.accent300),
+                style: const TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 1,
+                  color: Palette.accent300,
+                ),
               ),
             ],
           ),

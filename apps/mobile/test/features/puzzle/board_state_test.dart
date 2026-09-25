@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sudoku2077/domain/units.dart';
 import 'package:sudoku2077/features/puzzle/data/mock_api.dart';
 import 'package:sudoku2077/features/puzzle/state/board_state.dart';
 
@@ -128,5 +129,87 @@ void main() {
       ..setCell(2, 4)
       ..setCell(2, 4);
     expect(calls, 1);
+  });
+
+  group('unit-complete events', () {
+    // mockNearlySolvedGivens: the solution with indexes 0, 40 and 80 blank. Boxes 1, 2, 3, 5, 6 and
+    // 7 (0-based) are full from the start.
+    const initiallySecured = {1, 2, 3, 5, 6, 7};
+
+    test('secured boxes are derived from the grid at load, with no event', () {
+      final board = BoardState(givens: mockNearlySolvedGivens);
+      expect(board.securedBoxes, initiallySecured);
+      expect(board.lastCompletion, isNull);
+      expect(board.lastEvent, isNull);
+    });
+
+    test('a completing move exposes its units, origin and the new box', () {
+      final board = BoardState(givens: mockNearlySolvedGivens)..setCell(40, 5);
+      final completion = board.lastCompletion!;
+      expect(completion.origin, 40);
+      expect(completion.units, const [
+        Unit(UnitKind.row, 4),
+        Unit(UnitKind.col, 4),
+        Unit(UnitKind.box, 4),
+      ]);
+      expect(board.securedBoxes, {...initiallySecured, 4});
+      expect(board.lastEvent!.kind, BoardEventKind.completed);
+      expect(board.lastEvent!.units, completion.units);
+    });
+
+    test('ids increase per completion; plain moves keep the last one', () {
+      final board = BoardState(givens: mockGivens)..setCell(2, 4);
+      expect(board.lastCompletion, isNull);
+      expect(board.lastEvent!.kind, BoardEventKind.placed);
+
+      final near = BoardState(givens: mockNearlySolvedGivens)..setCell(40, 5);
+      final first = near.lastCompletion!.id;
+      near.setCell(0, 5);
+      expect(near.lastCompletion!.id, greaterThan(first));
+      expect(near.lastCompletion!.origin, 0);
+    });
+
+    test('undo clears the event and un-secures the box', () {
+      final board = BoardState(givens: mockNearlySolvedGivens)
+        ..setCell(40, 5)
+        ..undo();
+      expect(board.lastCompletion, isNull);
+      expect(board.lastEvent!.kind, BoardEventKind.undo);
+      expect(board.securedBoxes, initiallySecured);
+    });
+
+    test(
+      'a conflicting digit completes nothing and breaks the peers it hits',
+      () {
+        // A 1 in the centre clashes with the 1 at R5C9 (box 5) and R8C5 (box 7), so those boxes are
+        // no longer secured either; undo restores them.
+        final board = BoardState(givens: mockNearlySolvedGivens)
+          ..setCell(40, 1);
+        expect(board.lastCompletion, isNull);
+        expect(board.lastEvent!.kind, BoardEventKind.clash);
+        expect(board.securedBoxes, {1, 2, 3, 6});
+        board.undo();
+        expect(board.securedBoxes, initiallySecured);
+      },
+    );
+
+    test('the winning move raises no completion event', () {
+      final board = BoardState(givens: mockNearlySolvedGivens)
+        ..setCell(0, 5)
+        ..setCell(40, 5);
+      final beforeWin = board.lastCompletion!.id;
+      board.setCell(80, 9);
+      expect(board.lastCompletion!.id, beforeWin);
+      expect(board.lastEvent!.kind, BoardEventKind.gridFull);
+      expect(board.securedBoxes, hasLength(9));
+    });
+
+    test('erase is an event and removes the hatch', () {
+      final board = BoardState(givens: mockNearlySolvedGivens)
+        ..setCell(40, 5)
+        ..setCell(40, 0);
+      expect(board.lastEvent!.kind, BoardEventKind.erased);
+      expect(board.securedBoxes, initiallySecured);
+    });
   });
 }

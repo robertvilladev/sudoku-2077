@@ -1,8 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/settings_state.dart';
+import '../../../core/sfx.dart';
+import '../../../core/signal_button.dart';
 import '../../../core/theme.dart';
 import '../../../domain/sudoku.dart';
 import '../data/api_client.dart';
@@ -81,14 +86,35 @@ class _BoardScreenState extends State<BoardScreen> {
     }
   }
 
+  int? _heardCompletionId;
+
   void _onBoardChanged() {
     final board = _board!;
+    _reactToCompletion(board);
     // Keyed on the board string so a complete-but-wrong board is re-checked once edited.
     if (board.isComplete &&
         board.boardString != _validatedBoard &&
         !_validating) {
       _validate();
     }
+  }
+
+  /// Sound, haptic and screen-reader announcement for a new unit-complete event. The board never
+  /// raises one on the winning move, so the win flow plays alone.
+  void _reactToCompletion(BoardState board) {
+    final completion = board.lastCompletion;
+    if (completion == null || completion.id == _heardCompletionId) return;
+    _heardCompletionId = completion.id;
+    final settings = context.read<SettingsState>();
+    if (settings.sound) {
+      context.read<SfxPlayer>().play(Sfx.unitChirp(completion.units.length));
+    }
+    if (settings.haptics) HapticFeedback.lightImpact();
+    SemanticsService.sendAnnouncement(
+      View.of(context),
+      completion.units.map((u) => u.announcement).join(', '),
+      TextDirection.ltr,
+    );
   }
 
   Future<void> _validate() async {
@@ -175,7 +201,7 @@ class _BoardScreenState extends State<BoardScreen> {
             textAlign: TextAlign.center,
             style: const TextStyle(color: Palette.neutral500),
           ),
-          FilledButton(onPressed: _load, child: const Text('RETRY')),
+          SignalButton(label: 'RETRY', onPressed: _load),
           TextButton(onPressed: _toMenu, child: const Text('MENU')),
         ],
       );
@@ -217,6 +243,7 @@ class _BoardScreenState extends State<BoardScreen> {
                           elapsedSeconds: _elapsedSeconds,
                           mistakeCount: board.mistakeCount,
                           combo: board.combo,
+                          sectors: board.securedBoxes.length,
                           onPause: () => setState(() => _paused = true),
                         ),
                         if (_validateError != null)
@@ -230,6 +257,7 @@ class _BoardScreenState extends State<BoardScreen> {
                             message: 'Grid full, but the checksum failed. Keep hunting.',
                           ),
                         const SudokuGrid(),
+                        _EventLine(event: board.lastEvent),
                         const NumberPad(),
                         const ActionRow(),
                       ],
@@ -275,6 +303,7 @@ class _BoardScreenState extends State<BoardScreen> {
                     },
                   ),
                   primary: ('RESUME', () => setState(() => _paused = false)),
+                  extra: const _SettingsPanel(),
                 ),
             ],
           );
@@ -296,6 +325,7 @@ class _Hud extends StatelessWidget {
     required this.elapsedSeconds,
     required this.mistakeCount,
     required this.combo,
+    required this.sectors,
     required this.onPause,
   });
 
@@ -303,11 +333,16 @@ class _Hud extends StatelessWidget {
   final int elapsedSeconds;
   final int mistakeCount;
   final int combo;
+  final int sectors;
   final VoidCallback onPause;
 
   @override
   Widget build(BuildContext context) {
-    const label = TextStyle(fontSize: 10, color: Palette.neutral500);
+    const label = TextStyle(
+      fontSize: 10,
+      letterSpacing: 1,
+      color: Palette.neutral500,
+    );
     Widget stat(String name, String value, {Color? color}) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -317,32 +352,232 @@ class _Hud extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
+            fontFeatures: tabularFigures,
             color: color,
           ),
         ),
       ],
     );
 
-    return Row(
+    return Column(
+      spacing: 6,
       children: [
-        Expanded(
-          child: stat('TIER', difficulty.wireName, color: Palette.accent300),
+        Row(
+          children: [
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(text: difficulty.wireName),
+                    TextSpan(
+                      text: '  // ${difficulty.flavor}',
+                      style: const TextStyle(
+                        color: Palette.neutral500,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: displayFont,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                  color: Palette.accent300,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Pause',
+              onPressed: onPause,
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.pause),
+            ),
+          ],
         ),
-        Expanded(child: stat('TIME', formatTime(elapsedSeconds))),
-        Expanded(
-          child: stat(
-            'MISTAKES',
-            '$mistakeCount/$maxMistakes',
-            color: mistakeCount > 0 ? Palette.error : null,
-          ),
-        ),
-        Expanded(child: stat('COMBO', '×$combo', color: Palette.accent300)),
-        IconButton(
-          tooltip: 'Pause',
-          onPressed: onPause,
-          icon: const Icon(Icons.pause),
+        Row(
+          children: [
+            Expanded(child: stat('TIME', formatTime(elapsedSeconds))),
+            Expanded(
+              child: stat(
+                'MISTAKES',
+                '$mistakeCount/$maxMistakes',
+                color: mistakeCount > 0 ? Palette.error : null,
+              ),
+            ),
+            Expanded(child: stat('COMBO', '×$combo', color: Palette.signal)),
+            Expanded(
+              child: Semantics(
+                label: 'Sectors secured $sectors of 9',
+                excludeSemantics: true,
+                child: stat('SECTORS', '$sectors/9', color: Palette.signal),
+              ),
+            ),
+          ],
         ),
       ],
+    );
+  }
+}
+
+/// The yellow log line under the board (D11): what the last move did.
+class _EventLine extends StatelessWidget {
+  const _EventLine({required this.event});
+
+  final BoardEvent? event;
+
+  static String _cell(int index) => 'R${index ~/ 9 + 1}C${index % 9 + 1}';
+
+  @override
+  Widget build(BuildContext context) {
+    final e = event;
+    final text = switch (e?.kind) {
+      null => 'GRID ONLINE · SELECT A CELL',
+      BoardEventKind.placed => '${_cell(e!.index)} <- ${e.value}',
+      BoardEventKind.clash => 'CLASH AT ${_cell(e!.index)}',
+      BoardEventKind.erased => 'ERASED ${_cell(e!.index)}',
+      BoardEventKind.completed =>
+        '${e!.units.map((u) => u.label).join(' + ')} COMPLETE',
+      BoardEventKind.gridFull => 'GRID COMPLETE · SENT FOR VALIDATION',
+      BoardEventKind.undo => 'UNDO',
+    };
+    return ExcludeSemantics(
+      child: SizedBox(
+        height: 16,
+        width: double.infinity,
+        child: Text(
+          text,
+          key: const ValueKey('event-line'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.3,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w500,
+            fontFeatures: tabularFigures,
+            color: e?.kind == BoardEventKind.clash
+                ? Palette.error
+                : Palette.signal,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Effects / sound / haptics toggles, shown in the pause overlay. In memory only for now.
+class _SettingsPanel extends StatelessWidget {
+  const _SettingsPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsState>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SettingRow(
+          id: 'effects',
+          label: 'EFFECTS',
+          hint: 'Sweep, pulse, brackets',
+          value: settings.effects,
+          onChanged: (v) => settings.effects = v,
+        ),
+        _SettingRow(
+          id: 'sound',
+          label: 'SOUND',
+          value: settings.sound,
+          onChanged: (v) => settings.sound = v,
+        ),
+        _SettingRow(
+          id: 'haptics',
+          label: 'HAPTICS',
+          value: settings.haptics,
+          onChanged: (v) => settings.haptics = v,
+        ),
+      ],
+    );
+  }
+}
+
+class _SettingRow extends StatelessWidget {
+  const _SettingRow({
+    required this.id,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.hint,
+  });
+
+  final String id;
+  final String label;
+  final String? hint;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      toggled: value,
+      label: label.toLowerCase(),
+      excludeSemantics: true,
+      child: InkWell(
+        key: ValueKey('setting-$id'),
+        onTap: () => onChanged(!value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (hint != null)
+                      Text(
+                        hint!,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Palette.neutral500,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 52,
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: value ? Palette.accent900 : null,
+                  border: Border.all(
+                    color: value ? Palette.accent : Palette.neutral700,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  value ? 'ON' : 'OFF',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: value ? Palette.accent300 : Palette.neutral500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -386,6 +621,7 @@ class _OverlayCard extends StatelessWidget {
     required this.stats,
     required this.secondary,
     required this.primary,
+    this.extra,
   });
 
   final String badge;
@@ -394,6 +630,7 @@ class _OverlayCard extends StatelessWidget {
   final Map<String, String> stats;
   final (String, VoidCallback) secondary;
   final (String, VoidCallback) primary;
+  final Widget? extra;
 
   @override
   Widget build(BuildContext context) {
@@ -416,17 +653,20 @@ class _OverlayCard extends StatelessWidget {
               spacing: 16,
               children: [
                 Text(
-                  badge,
+                  '// $badge',
                   style: const TextStyle(
-                    fontSize: 10,
-                    color: Palette.neutral500,
+                    fontSize: 11,
+                    letterSpacing: 1.2,
+                    color: Palette.signal,
                   ),
                 ),
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
+                    fontFamily: displayFont,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.4,
                     color: titleColor,
                   ),
                 ),
@@ -449,6 +689,7 @@ class _OverlayCard extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
+                                fontFeatures: tabularFigures,
                               ),
                             ),
                           ],
@@ -456,6 +697,7 @@ class _OverlayCard extends StatelessWidget {
                       ),
                   ],
                 ),
+                ?extra,
                 OverflowBar(
                   alignment: MainAxisAlignment.end,
                   spacing: 8,
@@ -466,10 +708,7 @@ class _OverlayCard extends StatelessWidget {
                       onPressed: secondary.$2,
                       child: Text(secondary.$1),
                     ),
-                    FilledButton(
-                      onPressed: primary.$2,
-                      child: Text(primary.$1),
-                    ),
+                    SignalButton(label: primary.$1, onPressed: primary.$2),
                   ],
                 ),
               ],

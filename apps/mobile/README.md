@@ -35,6 +35,32 @@ In mock mode every tier serves the same classic puzzle, except **EASY**, which i
 cells blank (top-left `5`, centre `5`, bottom-right `9`) so the win dialog is three taps away. Three
 conflicting placements (e.g. a `5` anywhere else in the top row) trigger the lose dialog.
 
+## Look, sound and settings (Phase 5.5)
+
+Design: `docs/superpowers/specs/2026-09-25-phase5.5-cyberpunk-polish-design.md`.
+
+- **Fonts** are bundled in `assets/fonts/`: Oxanium (UI, HUD and grid digits; 400/500/600/700) and
+  Orbitron (logo and headings; 700/800). These are the upstream static TTFs, SIL OFL 1.1, with
+  `OFL-Oxanium.txt` / `OFL-Orbitron.txt` alongside. `main()` registers both licences with
+  `LicenseRegistry`.
+- **Sound effects** live in `assets/sfx/`. The three unit-complete chirps (`unit_chirp_{1,2,3}.wav`, one
+  blip per unit completed) are generated from the spec's synth parameters. After changing
+  `tool/render_chirps.dart`, regenerate them and commit the WAVs:
+
+  ```bash
+  dart run tool/render_chirps.dart
+  ```
+
+  `test/tool/render_chirps_test.dart` fails if the committed files drift from the script. Playback goes
+  through the `SfxPlayer` interface (`lib/core/sfx.dart`). `main()` uses `AudioplayersSfxPlayer`
+  (`audioplayers`, low-latency mode) and `SudokuApp` defaults to `NoopSfxPlayer`, so tests need no audio
+  backend. Any playback failure is swallowed, leaving the game silent.
+- **Settings**: effects, sound and haptics are ON/OFF rows in the pause overlay (`SettingsState`,
+  provided at the app root). They are in memory only; persisting them with `shared_preferences` is a
+  later Phase 5.5 item. Effects off hides the ring, the bracket flash and the digit pop-in, but the
+  "sector secured" hatch always shows. The OS reduce-motion setting swaps the ring for a short in-place
+  fade.
+
 ## Checks (same as CI)
 
 ```bash
@@ -51,12 +77,15 @@ pure Dart. Directories are added when a task needs them.
 ```
 lib/
   main.dart, app.dart          # entrypoint; provides ApiClient to the tree
-  core/                        # config (API_BASE_URL, USE_MOCK_API), theme
+  core/                        # config, theme, SignalButton, SettingsState, SfxPlayer
   domain/sudoku.dart           # peersOf, parseGrid, Difficulty — pure Dart
+  domain/units.dart            # unit-complete detection (completeUnits, securedBoxes) — pure Dart
   features/menu/               # title + difficulty screens
   features/puzzle/data/        # ApiClient (talks to apps/api), DTOs, mock backend
   features/puzzle/state/       # BoardState — port of web's useBoardState
-  features/puzzle/ui/          # board screen, grid, number pad
+  features/puzzle/ui/          # board screen, grid (+ effect painters), number pad
+assets/fonts/, assets/sfx/     # bundled fonts + licences, generated chirps
+tool/render_chirps.dart        # renders assets/sfx/unit_chirp_*.wav
 ```
 
 State is one `ChangeNotifier` per feature exposed through `provider`. Navigation is plain `Navigator`
