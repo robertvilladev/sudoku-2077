@@ -8,9 +8,11 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "audit": "tsx scripts/audit.ts"
   },
   "devDependencies": {
+    "tsx": "^4.19.1",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
   }
