@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/theme.dart';
 import 'features/menu/title_screen.dart';
 import 'features/puzzle/data/api_client.dart';
+import 'l10n/l10n.dart';
 
 class SudokuApp extends StatelessWidget {
   const SudokuApp({super.key, required this.apiClient});
@@ -17,6 +18,8 @@ class SudokuApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Sudoku 2077',
         theme: buildTheme(),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: const TitleScreen(),
       ),
     );

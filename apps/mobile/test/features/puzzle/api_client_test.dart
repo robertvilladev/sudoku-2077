@@ -87,17 +87,23 @@ void main() {
     });
   });
 
-  test('error responses surface the server error message and status', () async {
+  test('error responses surface the server code, message and status', () async {
     final client = clientFor(
-      (_) async =>
-          http.Response(jsonEncode({'error': 'No puzzles available'}), 503),
+      (_) async => http.Response(
+        jsonEncode({
+          'code': 'NO_PUZZLES_AVAILABLE',
+          'error': 'No puzzles available',
+        }),
+        503,
+      ),
     );
     expect(
       client.getRandomPuzzle(Difficulty.easy),
       throwsA(
         isA<ApiException>()
             .having((e) => e.statusCode, 'statusCode', 503)
-            .having((e) => e.message, 'message', 'No puzzles available'),
+            .having((e) => e.message, 'message', 'No puzzles available')
+            .having((e) => e.code, 'code', 'NO_PUZZLES_AVAILABLE'),
       ),
     );
   });

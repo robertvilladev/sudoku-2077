@@ -3,16 +3,16 @@ library;
 
 const gridSize = 81;
 
+/// Wire values only. Display labels live in the catalog (`DifficultyL10n`).
 enum Difficulty {
-  easy('EASY', 'ROOKIE RUN'),
-  medium('MEDIUM', 'STREET LEVEL'),
-  hard('HARD', 'CORPO GRADE'),
-  hardcore('HARDCORE', 'GHOST PROTOCOL');
+  easy('EASY'),
+  medium('MEDIUM'),
+  hard('HARD'),
+  hardcore('HARDCORE');
 
-  const Difficulty(this.wireName, this.flavor);
+  const Difficulty(this.wireName);
 
   final String wireName;
-  final String flavor;
 
   static Difficulty fromWire(String value) => Difficulty.values.firstWhere(
     (d) => d.wireName == value,
