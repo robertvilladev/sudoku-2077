@@ -4,6 +4,7 @@ import { z } from "zod";
 import { GetPuzzlesQuerySchema, ValidatePuzzleRequestSchema } from "@sudoku-2077/api-types";
 import type { PublicPuzzle, ValidatePuzzleResponse } from "@sudoku-2077/api-types";
 import { prisma } from "../db/client.js";
+import { errorBody } from "../errors.js";
 import { toPublicPuzzle } from "../mappers.js";
 
 const PuzzleIdParamsSchema = z.object({ id: z.string().min(1) });
@@ -15,7 +16,7 @@ export async function puzzleRoutes(app: FastifyInstance) {
     const parsed = GetPuzzlesQuerySchema.safeParse(request.query);
     if (!parsed.success) {
       reply.code(400);
-      return { error: "Invalid or missing 'difficulty' query parameter" };
+      return errorBody("VALIDATION_FAILED", "Invalid or missing 'difficulty' query parameter");
     }
 
     const puzzle = await prisma.puzzle.findFirst({
@@ -25,7 +26,10 @@ export async function puzzleRoutes(app: FastifyInstance) {
 
     if (!puzzle) {
       reply.code(404);
-      return { error: `No puzzles available for difficulty ${parsed.data.difficulty}. Run the replenish job.` };
+      return errorBody(
+        "NO_PUZZLES_AVAILABLE",
+        `No puzzles available for difficulty ${parsed.data.difficulty}. Run the replenish job.`
+      );
     }
 
     await prisma.puzzle.update({
@@ -41,13 +45,13 @@ export async function puzzleRoutes(app: FastifyInstance) {
     const params = PuzzleIdParamsSchema.safeParse(request.params);
     if (!params.success) {
       reply.code(400);
-      return { error: "Invalid puzzle id" };
+      return errorBody("VALIDATION_FAILED", "Invalid puzzle id");
     }
     const { id } = params.data;
     const puzzle = await prisma.puzzle.findUnique({ where: { id } });
     if (!puzzle) {
       reply.code(404);
-      return { error: "Puzzle not found" };
+      return errorBody("NOT_FOUND", "Puzzle not found");
     }
     const response: PublicPuzzle = toPublicPuzzle(puzzle);
     return response;
@@ -56,46 +60,42 @@ export async function puzzleRoutes(app: FastifyInstance) {
   // Checks a submitted board against the stored solution server-side so the solution never has to
   // leave the server before the player actually finishes the puzzle. Records a PuzzleCompletion only
   // for authenticated, correct solves — anonymous play still works, it just isn't tracked.
-  app.post(
-    "/api/puzzles/:id/validate",
-    { preHandler: app.optionalAuthenticate },
-    async (request, reply) => {
-      const params = PuzzleIdParamsSchema.safeParse(request.params);
-      if (!params.success) {
-        reply.code(400);
-        return { error: "Invalid puzzle id" };
-      }
-      const { id } = params.data;
-      const parsed = ValidatePuzzleRequestSchema.safeParse(request.body);
-      if (!parsed.success) {
-        reply.code(400);
-        return { error: "Body must be { board: <81-char string> }" };
-      }
-
-      const puzzle = await prisma.puzzle.findUnique({ where: { id } });
-      if (!puzzle) {
-        reply.code(404);
-        return { error: "Puzzle not found" };
-      }
-
-      const completed = !parsed.data.board.includes("0");
-      const correct = parsed.data.board === puzzle.solution;
-
-      if (correct && request.user) {
-        await prisma.puzzleCompletion.create({
-          data: {
-            id: randomUUID(),
-            userId: request.user.sub,
-            puzzleId: puzzle.id,
-            timeSeconds: parsed.data.timeSeconds ?? 0,
-            mistakeCount: parsed.data.mistakeCount ?? 0,
-            maxCombo: parsed.data.maxCombo ?? 0,
-          },
-        });
-      }
-
-      const response: ValidatePuzzleResponse = { correct, completed };
-      return response;
+  app.post("/api/puzzles/:id/validate", { preHandler: app.optionalAuthenticate }, async (request, reply) => {
+    const params = PuzzleIdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      reply.code(400);
+      return errorBody("VALIDATION_FAILED", "Invalid puzzle id");
     }
-  );
+    const { id } = params.data;
+    const parsed = ValidatePuzzleRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      reply.code(400);
+      return errorBody("VALIDATION_FAILED", "Body must be { board: <81-char string> }");
+    }
+
+    const puzzle = await prisma.puzzle.findUnique({ where: { id } });
+    if (!puzzle) {
+      reply.code(404);
+      return errorBody("NOT_FOUND", "Puzzle not found");
+    }
+
+    const completed = !parsed.data.board.includes("0");
+    const correct = parsed.data.board === puzzle.solution;
+
+    if (correct && request.user) {
+      await prisma.puzzleCompletion.create({
+        data: {
+          id: randomUUID(),
+          userId: request.user.sub,
+          puzzleId: puzzle.id,
+          timeSeconds: parsed.data.timeSeconds ?? 0,
+          mistakeCount: parsed.data.mistakeCount ?? 0,
+          maxCombo: parsed.data.maxCombo ?? 0,
+        },
+      });
+    }
+
+    const response: ValidatePuzzleResponse = { correct, completed };
+    return response;
+  });
 }
