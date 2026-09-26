@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../l10n/l10n.dart';
 import 'difficulty_screen.dart';
+import 'language_screen.dart';
 
 class TitleScreen extends StatelessWidget {
   const TitleScreen({super.key});
@@ -67,6 +68,14 @@ class TitleScreen extends StatelessWidget {
                   OutlinedButton(
                     onPressed: null,
                     child: Text(l10n.menuDailyChallengeSoon.toUpperCase()),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const OptionsScreen(),
+                      ),
+                    ),
+                    child: Text(l10n.menuOptions.toUpperCase()),
                   ),
                 ],
               ),

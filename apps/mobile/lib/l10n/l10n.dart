@@ -5,6 +5,15 @@ import 'gen/app_localizations.dart';
 
 export 'gen/app_localizations.dart';
 
+/// Always shown in their own language, never translated, so a player who picked the wrong
+/// language can still find theirs.
+const languageNames = {
+  'en': 'English',
+  'es': 'Español',
+  'fr': 'Français',
+  'ca': 'Català',
+};
+
 extension L10nContext on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
 }
