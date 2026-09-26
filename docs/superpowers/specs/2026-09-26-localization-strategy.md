@@ -1,7 +1,8 @@
 # Localization (i18n) strategy — web + mobile
 
-Status: **proposal, not approved.** Options and recommendations for adding languages to `apps/web`
-and `apps/mobile`. The roadmap entry is Phase 5.6 in `ROADMAP.md`; this doc holds the reasoning.
+Status: **approved 2026-09-26**, except for one detail still open: which flavor texts stay in
+English (see "Decisions"). Covers adding languages to `apps/web` and `apps/mobile`. The roadmap
+entry is Phase 5.4 in `ROADMAP.md`; this doc holds the reasoning.
 
 ## Where we start
 
@@ -110,25 +111,33 @@ mobile and JSON for web.
 
 ## Details to settle when implementing
 
-- **Locale selection and persistence**
-  - Web: `navigator.languages`, matched against supported locales with English as the fallback.
-    Keep the override in `SettingsContext` (`localStorage`), which the Phase 3 server-side settings
-    sync already covers. Keep `<html lang>` updated.
-  - Mobile: the system locale, and optionally an in-app override in `shared_preferences`, living
-    in the Phase 5.5 settings panel.
+- **Locale selection and persistence** (the approved behaviour is in "Decisions" below)
+  - Web: a `locale` field in `SettingsContext` (`localStorage`), default `en`. No browser-language
+    detection. The Phase 3 server-side settings sync covers it later. Keep `<html lang>` updated.
+  - Mobile: `locale` plus a `languageChosen` flag in `shared_preferences`. Pass the stored locale
+    to `MaterialApp.locale` so the app ignores the device language.
+  - Language names are always shown in their own language (English, Español, Français, Català),
+    never translated, so a user who picked the wrong one can still find theirs.
   - Mobile store metadata: list the supported languages in iOS `CFBundleLocalizations` so the App
     Store shows them. On Android 13+, add `locales_config.xml` for the per-app language setting.
 - **What not to localize**
   - The `SUDOKU 2077` logo and wordmark.
   - Grid digits: always `1`–`9`, never locale digit systems such as Arabic-Indic.
   - API wire values (`EASY`, `HARDCORE`).
-  - Some cyberpunk flavor copy (`GHOST PROTOCOL`, `// choose your clearance level`) may be better
-    left in English as part of the aesthetic. Decide per key, and mark those keys as intentionally
-    untranslated in the ARB `@key.description`.
+  - Possibly some cyberpunk flavor copy (see decision 4). Keys kept in English on purpose still
+    live in the catalog, so the choice can be changed per language later, and their ARB
+    `@key.description` says they're intentionally untranslated.
 - **Fonts versus scripts.** The Phase 5.5 font candidates (Orbitron, Audiowide, Chakra Petch,
-  Oxanium, Share Tech Mono) have mostly Latin-only glyph sets. Latin-script languages (es, pt, fr,
-  de) are safe as long as accented characters are covered. Cyrillic, Greek, and CJK need a fallback
-  font stack. **Choose the target languages before choosing the font.**
+  Oxanium, Share Tech Mono) have mostly Latin-only glyph sets. That's fine for en/es/fr/ca, but the
+  font must include the **accented capitals**, because the UI is mostly uppercase. Test every
+  candidate in the Phase 5.5 proof of concept with this string:
+  `ÀÂÇÈÉÊËÎÏÑÒÓÔÙÚÛÜŸŒ àâçèéêëîïñòóôùúûüÿœ ¿¡ «» L·L l·l`. The `·` is the Catalan middle dot
+  (U+00B7). Cyrillic, Greek and CJK would need a fallback font, but they're out of scope.
+- **Language quirks**
+  - French puts a space before `: ; ! ?` and inside `« »`. Translators write a narrow no-break
+    space (U+202F) into the string itself, so the punctuation never wraps onto its own line.
+  - Catalan (`ca`) is supported by `flutter_localizations` (Material/Cupertino widget strings) and
+    by `Intl` on web. Confirm once the first `ca` build runs.
 - **Uppercase styling.** Most of the UI is uppercase. Keep catalog strings in natural case and
   uppercase them in styling (CSS `text-transform` with the right `lang`, or `toUpperCase()` in
   Dart). This handles cases like the Turkish dotted `i`, and lets translators write normal
@@ -156,13 +165,37 @@ mobile and JSON for web.
 - **Translations:** a single developer can hand-translate with LLM pre-fill plus a native-speaker
   review. Revisit Option C (a TMS) if contributors join.
 
-## Open decisions
+## Decisions
 
-1. **The sharing approach:** Option A, B, or C. Recommendation: B.
-2. **The first target languages.** This decides whether the Phase 5.5 font needs non-Latin
-   coverage.
-3. **Scheduling:** extract English now, before Phase 5.5 adds more strings, or after Phase 5.5
-   ships.
-4. **Which cyberpunk flavor strings are translated, and which stay English on purpose.**
-5. **Whether an in-app language override is wanted,** or the device or browser language is
-   enough.
+Decided 2026-09-26.
+
+1. **Sharing approach: Option B.** One shared ARB catalog in `packages/i18n`, read by `react-intl`
+   on web and `gen-l10n` on mobile.
+2. **MVP languages: English (`en`, default and fallback), Spanish (`es`), French (`fr`), Catalan
+   (`ca`).** All Latin script. Later languages should also be Latin-script unless the font gets a
+   fallback.
+3. **Timing: English extraction is part of this phase, and this phase runs before Phase 5.5.**
+   That's why it's numbered 5.4. Phase 5.5 then adds its new strings (settings panel, effect
+   labels) straight to the catalog.
+4. **Flavor texts: still to confirm.** This isn't about the font. Any of the candidate fonts can
+   draw Spanish, French or Catalan text once the glyph check passes. The question is only
+   whether some stylized _names_ should stay in English on purpose, the way a game keeps its
+   brand names. The proposed default, to be confirmed:
+   - Keep the four difficulty codenames (`ROOKIE RUN`, `STREET LEVEL`, `CORPO GRADE`,
+     `GHOST PROTOCOL`) and the `SUDOKU 2077` wordmark in English, as brand names.
+   - Translate everything else, including the terminal-style lines, which carry meaning. For
+     example, `// choose your clearance level` becomes `// elige tu nivel de acceso`.
+   - Either way the codenames are catalog keys, so switching any of them to translated later is a
+     translation-file change, not a code change.
+5. **Language selection**
+   - **Web:** default English, with no browser detection and no first-visit screen. The language is
+     changed only in settings. The settings panel is currently only reachable from the in-game
+     pause dialog (`PuzzleRoute`), so this phase also adds a SETTINGS entry to the title menu that
+     opens the same panel.
+   - **Mobile:** a language picker on the first launch of the app, shown before the title screen,
+     with English preselected. (The app has no login, so "first launch" is the trigger.) It's
+     shown once, then stored. The language can be changed later from a new **OPTIONS** entry in the
+     title-screen main menu. The Phase 5.5 settings panel (sound, effects, haptics) joins that same
+     OPTIONS screen later.
+   - **Accounts, later:** once settings sync server-side (Phase 3 on web, Phase 6 on mobile), a
+     logged-in user's saved language overrides the local one.

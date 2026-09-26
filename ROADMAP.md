@@ -186,11 +186,33 @@ Surfaced while landing the scaffold (design: `docs/superpowers/specs/2026-09-19-
 
 ---
 
+## Phase 5.4 — Localization (web + mobile)
+
+**Status: approved. Runs before Phase 5.5.** Reasoning and details are in `docs/superpowers/specs/2026-09-26-localization-strategy.md`. One shared ICU/ARB catalog in `packages/i18n`, read by `react-intl` on web and `flutter gen-l10n` on mobile. MVP languages: **English (default), Spanish, French, Catalan**. Extracting the existing English text comes first, then the three translations.
+
+**Still to confirm**
+
+- [ ] **Flavor texts.** Proposed: the difficulty codenames (`ROOKIE RUN` … `GHOST PROTOCOL`) and the `SUDOKU 2077` wordmark stay English as brand names, and everything else is translated. They're catalog keys either way, so this can change later without code changes.
+
+**Work**
+
+- [ ] **`packages/i18n`.** `en.arb` as the source, plus `es.arb`, `fr.arb`, `ca.arb`. Keys are camelCase with a feature prefix, since ARB keys must be valid Dart identifiers. A build step emits per-locale JSON for web and generated message-ID types. A CI check covers key parity, matching placeholders, and ICU parsing.
+- [ ] **Separate wire values from labels.** Mobile shows `Difficulty.wireName` directly, and both clients hard-code the same difficulty flavor text. Labels should come from the catalog, and `EASY`/`HARDCORE` should stay wire-only.
+- [ ] **Web extraction.** Add a `react-intl` provider fed by a new `locale` setting in `SettingsContext`, default `en`, with no browser detection (the Phase 3 settings sync covers it later). Keep `<html lang>` in sync and lazy-load each locale's JSON. Replace the `toLocaleDateString()` in `ProfilePage` with a locale-aware formatter. Add the `formatjs/no-literal-string` ESLint rule. The test setup wraps the app in the `en` provider.
+- [ ] **Web language setting.** Add a LANGUAGE row to the settings panel. That panel is only in the in-game pause dialog today, so also add a SETTINGS entry to the title menu that opens the same panel. No first-visit picker on web.
+- [ ] **Mobile extraction.** Add `flutter_localizations`, `intl`, and `l10n.yaml` pointing at the shared ARB files. If `gen-l10n` rejects an `arb-dir` outside the package, add a sync script plus a CI staleness check instead. Replace inline `Text('...')` with `AppLocalizations`. Widget tests pump the localization delegates. `mobile.yml` also runs when `packages/i18n/**` changes.
+- [ ] **Mobile language picker.** A first-launch screen, shown before the title screen, with English preselected. It's shown once, and the choice plus a `languageChosen` flag go in `shared_preferences` (the same dependency as Phase 5 progress persistence; whichever lands first adds it, together with `flutter build apk` in CI). Also a new **OPTIONS** entry in the title-screen menu with the language setting. The Phase 5.5 settings panel moves into it later. Language names are always shown in their own language (English, Español, Français, Català).
+- [ ] **API error codes.** Add a stable `code` next to `error` in the `packages/api-types` error shape. Clients translate `code`, and `error` stays English for developers. Don't translate on the server.
+- [ ] **Translations: es, fr, ca.** A length and overflow pass on the HUD, tier cards and number pad (expect about 30% longer text). French needs a narrow no-break space before `: ; ! ?`. Also iOS `CFBundleLocalizations` and Android `locales_config.xml`.
+- [ ] **Out of scope for v1:** non-Latin scripts and right-to-left (RTL) languages. New mobile layouts should still use `EdgeInsetsDirectional`/`AlignmentDirectional`, so adding RTL later is cheap.
+
+---
+
 ## Phase 5.5 — Cyberpunk polish (web + mobile)
 
 Makes both clients feel like the same game, and makes the board react more while staying simple. Everything here ships on **both** `apps/web` and `apps/mobile` unless marked otherwise. Start with a design proof of concept (a static/interactive mockup of the board states below) so the font, colours and effects are decided once and then implemented twice.
 
-- [ ] **Cyberpunk font.** Replace JetBrains Mono with a font that reads as cyberpunk. Pick it in the proof of concept. The digits must stay legible at cell size, so a likely split is a display face for the logo and headings, and a techy mono or semi-mono face for UI and grid digits. Candidates (all SIL OFL, on Google Fonts, available as `@fontsource/*` for web and bundleable as Flutter assets): Orbitron or Audiowide (display only, too wide for body text), Chakra Petch, Oxanium, Share Tech Mono. Use tabular or monospaced digits so the timer doesn't jitter. Check glyph coverage against the Phase 5.6 target languages. Most of these fonts are Latin-only, so Cyrillic or CJK would need a fallback stack.
+- [ ] **Cyberpunk font.** Replace JetBrains Mono with a font that reads as cyberpunk. Pick it in the proof of concept. The digits must stay legible at cell size, so a likely split is a display face for the logo and headings, and a techy mono or semi-mono face for UI and grid digits. Candidates (all SIL OFL, on Google Fonts, available as `@fontsource/*` for web and bundleable as Flutter assets): Orbitron or Audiowide (display only, too wide for body text), Chakra Petch, Oxanium, Share Tech Mono. Use tabular or monospaced digits so the timer doesn't jitter. It must also cover the Phase 5.4 languages (en/es/fr/ca), including accented capitals and the Catalan `·`, since the UI is mostly uppercase. Test each candidate with the string in the localization spec.
 - [ ] **Given vs. player digits, clearly distinct.** Today web makes givens `neutral-200` semibold and entries `neutral-400` medium: two greys that are hard to tell apart, and the same-value highlight recolours both to `accent-300`, which erases the difference. Mobile uses white bold vs. `accent-300`. Target, identical on both clients:
   - Givens are "hardwired": neutral/white, heavier weight, plus a faint cell tint so they read as fixed.
   - Player digits are "injected": the accent colour, regular weight, no cell tint.
@@ -210,28 +232,6 @@ Makes both clients feel like the same game, and makes the board react more while
   - Settings: a pause-menu settings panel (sound, effects, haptics, auto-clear notes, ambient hum), persisted with `shared_preferences`, mirroring web's `SettingsContext`.
 
 ---
-
-## Phase 5.6 — Localization (web + mobile)
-
-**Status: proposal. Needs decisions before any work starts.** Options, trade-offs and the reasoning are in `docs/superpowers/specs/2026-09-26-localization-strategy.md`. Recommended approach: one shared ICU/ARB catalog in `packages/i18n`, read by `react-intl` on web and `flutter gen-l10n` on mobile. Ship English-only extraction first. Adding real languages is a separate step after that.
-
-**Decisions needed first**
-
-- [ ] **Sharing approach.** Per-client catalogs, a shared ARB catalog (recommended), or a translation management system (TMS) as the source of truth.
-- [ ] **First target languages.** This determines the glyph coverage the Phase 5.5 font needs.
-- [ ] **Timing.** Extract strings before Phase 5.5 adds more copy, or after it ships.
-- [ ] **Flavor copy.** Which cyberpunk strings (`GHOST PROTOCOL`, `// choose your clearance level`) stay in English on purpose.
-- [ ] **In-app language override.** Whether to offer one, or just follow the device or browser language.
-
-**Work (assuming the recommendation)**
-
-- [ ] **`packages/i18n`.** `en.arb` as the source. Keys are camelCase with a feature prefix, since ARB keys must be valid Dart identifiers. A build step emits per-locale JSON for web and generated message-ID types. A CI check covers key parity, matching placeholders, and ICU parsing.
-- [ ] **Separate wire values from labels.** Mobile shows `Difficulty.wireName` directly, and both clients hard-code the same difficulty flavor text. Labels should come from the catalog, and `EASY`/`HARDCORE` should stay wire-only.
-- [ ] **Web extraction.** Add a `react-intl` provider fed by `SettingsContext` (the locale is stored with the other settings, so the Phase 3 settings sync covers it). Use `navigator.languages` detection with an `en` fallback, keep `<html lang>` in sync, and lazy-load each locale's JSON. Replace the `toLocaleDateString()` in `ProfilePage` with a locale-aware formatter. Add the `formatjs/no-literal-string` ESLint rule. The test setup wraps the app in the `en` provider.
-- [ ] **Mobile extraction.** Add `flutter_localizations`, `intl`, and `l10n.yaml` pointing at the shared ARB files. If `gen-l10n` rejects an `arb-dir` outside the package, add a sync script plus a CI staleness check instead. Replace inline `Text('...')` with `AppLocalizations`. Widget tests pump the localization delegates. `mobile.yml` also runs when `packages/i18n/**` changes.
-- [ ] **API error codes.** Add a stable `code` next to `error` in the `packages/api-types` error shape. Clients translate `code`, and `error` stays English for developers. Don't translate on the server.
-- [ ] **First additional language.** Translation files and a length and overflow pass on the HUD, tier cards and number pad (expect about 30% longer text). Also iOS `CFBundleLocalizations` and Android `locales_config.xml`.
-- [ ] **Out of scope for v1:** right-to-left (RTL) languages. New mobile layouts should still use `EdgeInsetsDirectional`/`AlignmentDirectional`, so adding RTL later is cheap.
 
 ---
 
