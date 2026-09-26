@@ -7,10 +7,10 @@ import type { DifficultyTier } from "@sudoku-2077/api-types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { GlitchText } from "@/components/cyberpunk/GlitchText";
 import { HudBar } from "@/components/cyberpunk/HudBar";
 import { PageFlicker } from "@/components/cyberpunk/PageFlicker";
+import { SettingsPanel } from "@/components/cyberpunk/SettingsPanel";
 import { SudokuGrid } from "@/components/cyberpunk/SudokuGrid";
 import { ActionRow, NumberPad } from "@/components/cyberpunk/NumberPad";
 import { useSettings } from "../lib/settings/SettingsContext.js";
@@ -297,28 +297,7 @@ function PuzzleBoard({
                 <FormattedMessage id="puzzlePausedTitle" />
               </DialogTitle>
             </DialogHeader>
-            <div className="flex flex-col gap-3">
-              <SettingRow
-                label={<FormattedMessage id="settingSound" />}
-                value={settings.soundOn}
-                onToggle={settings.toggleSound}
-              />
-              <SettingRow
-                label={<FormattedMessage id="settingScanline" />}
-                value={settings.scanlineOn}
-                onToggle={settings.toggleScanline}
-              />
-              <SettingRow
-                label={<FormattedMessage id="settingAutoClearNotes" />}
-                value={settings.autoClearNotesOn}
-                onToggle={settings.toggleAutoClearNotes}
-              />
-              <SettingRow
-                label={<FormattedMessage id="settingHum" />}
-                value={settings.humOn}
-                onToggle={settings.toggleHum}
-              />
-            </div>
+            <SettingsPanel />
             <DialogFooter>
               <Button
                 variant="secondary"
@@ -352,22 +331,6 @@ function Stat({ label, value, accent = false }: { label: ReactNode; value: React
     <div>
       <div className="text-[11px] tracking-wide text-neutral-500 uppercase">{label}</div>
       <div className={`font-mono text-lg font-semibold ${accent ? "text-accent-300" : ""}`}>{value}</div>
-    </div>
-  );
-}
-
-function SettingRow({ label, value, onToggle }: { label: ReactNode; value: boolean; onToggle: () => void }) {
-  return (
-    <div className="flex items-center justify-between font-mono text-xs text-neutral-500 uppercase">
-      <span>{label}</span>
-      <ToggleGroup type="single" value={value ? "on" : "off"} onValueChange={(v) => v && onToggle()}>
-        <ToggleGroupItem value="on">
-          <FormattedMessage id="settingOn" />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="off">
-          <FormattedMessage id="settingOff" />
-        </ToggleGroupItem>
-      </ToggleGroup>
     </div>
   );
 }

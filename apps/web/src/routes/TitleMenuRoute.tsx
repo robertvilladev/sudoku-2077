@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { CubeTransparentIcon } from "@phosphor-icons/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useNavigate } from "react-router-dom";
 import { useDailyChallenge } from "../features/puzzle/api.js";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageFlicker } from "@/components/cyberpunk/PageFlicker";
+import { SettingsPanel } from "@/components/cyberpunk/SettingsPanel";
 import { ScanlineOverlay } from "@/components/cyberpunk/ScanlineOverlay";
 import { TerminalBootText } from "@/components/cyberpunk/TerminalBootText";
 
@@ -11,6 +14,7 @@ export function TitleMenuRoute() {
   const navigate = useNavigate();
   const daily = useDailyChallenge();
   const intl = useIntl();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <PageFlicker>
@@ -45,10 +49,24 @@ export function TitleMenuRoute() {
           >
             <FormattedMessage id="menuDailyChallenge" />
           </Button>
+          <Button variant="secondary" className="h-11" onClick={() => setSettingsOpen(true)}>
+            <FormattedMessage id="menuSettings" />
+          </Button>
           <Button variant="ghost" className="h-11" disabled>
             <FormattedMessage id="menuLeaderboard" />
           </Button>
         </div>
+
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="uppercase">
+                <FormattedMessage id="settingsTitle" />
+              </DialogTitle>
+            </DialogHeader>
+            <SettingsPanel />
+          </DialogContent>
+        </Dialog>
 
         {/* eslint-disable-next-line formatjs/no-literal-string-in-jsx -- build tag, not copy */}
         <p className="absolute bottom-5 left-8 font-mono text-[10px] text-neutral-700">
