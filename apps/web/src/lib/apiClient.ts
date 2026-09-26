@@ -1,12 +1,13 @@
 import type { z } from "zod";
-import { ErrorResponseSchema } from "@sudoku-2077/api-types";
+import { ErrorResponseSchema, type ErrorCode } from "@sudoku-2077/api-types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000";
 
 export class ApiError extends Error {
   constructor(
     message: string,
-    public readonly status: number
+    public readonly status: number,
+    public readonly code?: ErrorCode
   ) {
     super(message);
     this.name = "ApiError";
@@ -23,7 +24,9 @@ async function request<T>(path: string, schema: z.ZodType<T>, init: RequestInit 
 
   if (!response.ok) {
     const parsedError = ErrorResponseSchema.safeParse(body);
-    throw new ApiError(parsedError.success ? parsedError.data.error : "Request failed", response.status);
+    throw parsedError.success
+      ? new ApiError(parsedError.data.error, response.status, parsedError.data.code)
+      : new ApiError("Request failed", response.status);
   }
 
   return schema.parse(body);

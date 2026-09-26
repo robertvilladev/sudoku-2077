@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, useAnimationControls } from "motion/react";
 import confetti from "canvas-confetti";
+import { FormattedMessage, useIntl } from "react-intl";
 import type { DifficultyTier } from "@sudoku-2077/api-types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,15 +20,23 @@ import { useRerollPuzzle } from "../features/puzzle/useRerollPuzzle.js";
 import { useGameTimer } from "../features/puzzle/useGameTimer.js";
 import { clearProgress, readValidProgress, writeProgress } from "../features/puzzle/progressStorage.js";
 import { playSfx, startAmbientHum, stopAmbientHum } from "../lib/audio/sfx.js";
+import { DIFFICULTY_LABEL } from "../lib/i18n/difficulty.js";
 
 export function PuzzleRoute() {
   const { id = "" } = useParams();
   const { data: puzzle, isLoading } = usePuzzle(id);
 
-  if (isLoading) return <p className="p-8 font-mono text-sm text-neutral-500">Loading puzzle…</p>;
-  if (!puzzle) return <p className="p-8 font-mono text-sm text-neutral-500">Puzzle not found.</p>;
+  if (isLoading || !puzzle) {
+    return (
+      <p className="p-8 font-mono text-sm text-neutral-500">
+        <FormattedMessage id={isLoading ? "puzzleLoading" : "puzzleNotFound"} />
+      </p>
+    );
+  }
 
-  return <PuzzleBoard key={puzzle.id} puzzleId={puzzle.id} givens={puzzle.givens} difficulty={puzzle.difficulty} />;
+  return (
+    <PuzzleBoard key={puzzle.id} puzzleId={puzzle.id} givens={puzzle.givens} difficulty={puzzle.difficulty} />
+  );
 }
 
 function PuzzleBoard({
@@ -40,6 +49,7 @@ function PuzzleBoard({
   difficulty: DifficultyTier;
 }) {
   const navigate = useNavigate();
+  const intl = useIntl();
   const board = useBoardState(givens, puzzleId);
   const validate = useValidatePuzzle(puzzleId);
   const { reroll, isLoading: isRerolling } = useRerollPuzzle(difficulty);
@@ -103,7 +113,8 @@ function PuzzleBoard({
   useEffect(() => {
     if (board.mistakeCount > prevMistakeCountRef.current) {
       if (settings.soundOn) playSfx("error");
-      if (settings.scanlineOn) shakeControls.start({ x: [0, -6, 6, -4, 4, 0], transition: { duration: 0.3 } });
+      if (settings.scanlineOn)
+        shakeControls.start({ x: [0, -6, 6, -4, 4, 0], transition: { duration: 0.3 } });
     }
     prevMistakeCountRef.current = board.mistakeCount;
   }, [board.mistakeCount, settings.soundOn, settings.scanlineOn, shakeControls]);
@@ -143,7 +154,10 @@ function PuzzleBoard({
 
   return (
     <PageFlicker>
-      <motion.div animate={shakeControls} className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-4">
+      <motion.div
+        animate={shakeControls}
+        className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-4"
+      >
         <HudBar
           elapsedSeconds={timer.elapsedSeconds}
           mistakeCount={board.mistakeCount}
@@ -160,7 +174,9 @@ function PuzzleBoard({
             role="alert"
             className="flex items-center justify-between rounded-md border border-[oklch(66%_0.16_25)] px-4 py-2 font-mono text-sm text-[oklch(66%_0.16_25)]"
           >
-            <span>Couldn't verify your solution — check your connection.</span>
+            <span>
+              <FormattedMessage id="puzzleValidateError" />
+            </span>
             <Button
               variant="secondary"
               onClick={() =>
@@ -172,7 +188,7 @@ function PuzzleBoard({
                 })
               }
             >
-              RETRY
+              <FormattedMessage id="actionRetry" />
             </Button>
           </div>
         )}
@@ -213,23 +229,25 @@ function PuzzleBoard({
           <DialogContent showCloseButton={false}>
             <DialogHeader>
               <Badge variant="outline" className="self-start">
-                PUZZLE_CLEARED
+                <FormattedMessage id="puzzleClearedBadge" />
               </Badge>
               <DialogTitle asChild>
-                <GlitchText className="font-mono text-2xl font-bold glow-text-win">GRID DECRYPTED</GlitchText>
+                <GlitchText className="font-mono text-2xl font-bold uppercase glow-text-win">
+                  <FormattedMessage id="puzzleClearedTitle" />
+                </GlitchText>
               </DialogTitle>
             </DialogHeader>
             <div className="grid grid-cols-3 gap-4">
-              <Stat label="TIME" value={formatTime(timer.elapsedSeconds)} />
-              <Stat label="MISTAKES" value={String(board.mistakeCount)} />
-              <Stat label="MAX COMBO" value={`×${board.maxCombo}`} accent />
+              <Stat label={<FormattedMessage id="statTime" />} value={formatTime(timer.elapsedSeconds)} />
+              <Stat label={<FormattedMessage id="statMistakes" />} value={String(board.mistakeCount)} />
+              <Stat label={<FormattedMessage id="statMaxCombo" />} value={`×${board.maxCombo}`} accent />
             </div>
             <DialogFooter>
               <Button variant="secondary" onClick={() => navigate("/")}>
-                MENU
+                <FormattedMessage id="actionMenu" />
               </Button>
               <Button variant="primary" onClick={reroll} disabled={isRerolling}>
-                NEXT PUZZLE
+                <FormattedMessage id="actionNextPuzzle" />
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -239,24 +257,27 @@ function PuzzleBoard({
           <DialogContent showCloseButton={false}>
             <DialogHeader>
               <Badge variant="outline" className="self-start">
-                PUZZLE_FAILED
+                <FormattedMessage id="puzzleFailedBadge" />
               </Badge>
               <DialogTitle asChild>
-                <GlitchText className="font-mono text-2xl font-bold text-[oklch(66%_0.16_25)] glow-text-error">
-                  GRID CORRUPTED
+                <GlitchText className="font-mono text-2xl font-bold text-[oklch(66%_0.16_25)] uppercase glow-text-error">
+                  <FormattedMessage id="puzzleFailedTitle" />
                 </GlitchText>
               </DialogTitle>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-4">
-              <Stat label="TIME" value={formatTime(timer.elapsedSeconds)} />
-              <Stat label="DIFFICULTY" value={difficulty} />
+              <Stat label={<FormattedMessage id="statTime" />} value={formatTime(timer.elapsedSeconds)} />
+              <Stat
+                label={<FormattedMessage id="statDifficulty" />}
+                value={<FormattedMessage id={DIFFICULTY_LABEL[difficulty]} />}
+              />
             </div>
             <DialogFooter>
               <Button variant="secondary" onClick={() => navigate("/")}>
-                MENU
+                <FormattedMessage id="actionMenu" />
               </Button>
               <Button variant="primary" onClick={reroll} disabled={isRerolling}>
-                RETRY
+                <FormattedMessage id="actionRetry" />
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -272,21 +293,31 @@ function PuzzleBoard({
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>SYSTEM PAUSED</DialogTitle>
+              <DialogTitle className="uppercase">
+                <FormattedMessage id="puzzlePausedTitle" />
+              </DialogTitle>
             </DialogHeader>
             <div className="flex flex-col gap-3">
-              <SettingRow label="SOUND FX" value={settings.soundOn} onToggle={settings.toggleSound} />
               <SettingRow
-                label="CRT SCANLINE EFFECT"
+                label={<FormattedMessage id="settingSound" />}
+                value={settings.soundOn}
+                onToggle={settings.toggleSound}
+              />
+              <SettingRow
+                label={<FormattedMessage id="settingScanline" />}
                 value={settings.scanlineOn}
                 onToggle={settings.toggleScanline}
               />
               <SettingRow
-                label="AUTO-CLEAR NOTES"
+                label={<FormattedMessage id="settingAutoClearNotes" />}
                 value={settings.autoClearNotesOn}
                 onToggle={settings.toggleAutoClearNotes}
               />
-              <SettingRow label="AMBIENT HUM" value={settings.humOn} onToggle={settings.toggleHum} />
+              <SettingRow
+                label={<FormattedMessage id="settingHum" />}
+                value={settings.humOn}
+                onToggle={settings.toggleHum}
+              />
             </div>
             <DialogFooter>
               <Button
@@ -296,17 +327,17 @@ function PuzzleBoard({
                   timer.resume();
                 }}
               >
-                RESUME
+                <FormattedMessage id="actionResume" />
               </Button>
               <Button
                 variant="primary"
                 onClick={() => {
-                  if (isWon || window.confirm("Quit to menu? Your progress will be saved — you can resume this puzzle later.")) {
+                  if (isWon || window.confirm(intl.formatMessage({ id: "quitConfirmSaved" }))) {
                     navigate("/");
                   }
                 }}
               >
-                QUIT TO MENU
+                <FormattedMessage id="actionQuitToMenu" />
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -316,22 +347,26 @@ function PuzzleBoard({
   );
 }
 
-function Stat({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+function Stat({ label, value, accent = false }: { label: ReactNode; value: ReactNode; accent?: boolean }) {
   return (
     <div>
-      <div className="text-[11px] tracking-wide text-neutral-500">{label}</div>
+      <div className="text-[11px] tracking-wide text-neutral-500 uppercase">{label}</div>
       <div className={`font-mono text-lg font-semibold ${accent ? "text-accent-300" : ""}`}>{value}</div>
     </div>
   );
 }
 
-function SettingRow({ label, value, onToggle }: { label: string; value: boolean; onToggle: () => void }) {
+function SettingRow({ label, value, onToggle }: { label: ReactNode; value: boolean; onToggle: () => void }) {
   return (
-    <div className="flex items-center justify-between font-mono text-xs text-neutral-500">
+    <div className="flex items-center justify-between font-mono text-xs text-neutral-500 uppercase">
       <span>{label}</span>
       <ToggleGroup type="single" value={value ? "on" : "off"} onValueChange={(v) => v && onToggle()}>
-        <ToggleGroupItem value="on">ON</ToggleGroupItem>
-        <ToggleGroupItem value="off">OFF</ToggleGroupItem>
+        <ToggleGroupItem value="on">
+          <FormattedMessage id="settingOn" />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="off">
+          <FormattedMessage id="settingOff" />
+        </ToggleGroupItem>
       </ToggleGroup>
     </div>
   );

@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { DEFAULT_LOCALE, isLocale, type Locale } from "../i18n/locales.js";
 
 interface Settings {
   soundOn: boolean;
   scanlineOn: boolean;
   autoClearNotesOn: boolean;
   humOn: boolean;
+  locale: Locale;
 }
 
 interface SettingsState extends Settings {
@@ -12,6 +14,7 @@ interface SettingsState extends Settings {
   toggleScanline: () => void;
   toggleAutoClearNotes: () => void;
   toggleHum: () => void;
+  setLocale: (locale: Locale) => void;
 }
 
 const STORAGE_KEY = "sudoku2077.settings";
@@ -21,13 +24,16 @@ const DEFAULTS: Settings = {
   scanlineOn: true,
   autoClearNotesOn: true,
   humOn: false,
+  locale: DEFAULT_LOCALE,
 };
 
 function readStoredSettings(): Settings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULTS;
-    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Settings>) };
+    const stored = { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Settings>) };
+    // A locale that was dropped (or hand-edited) falls back instead of breaking the provider.
+    return isLocale(stored.locale) ? stored : { ...stored, locale: DEFAULT_LOCALE };
   } catch {
     return DEFAULTS;
   }
@@ -58,6 +64,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       toggleAutoClearNotes: () =>
         setSettings((prev) => ({ ...prev, autoClearNotesOn: !prev.autoClearNotesOn })),
       toggleHum: () => setSettings((prev) => ({ ...prev, humOn: !prev.humOn })),
+      setLocale: (locale) => setSettings((prev) => ({ ...prev, locale })),
     }),
     [settings]
   );
