@@ -44,7 +44,7 @@ Invariants:
 
 ## Git
 
-**Conventional Commits**, always with a scope from the table above:
+Use **Conventional Commits** with a scope from the table above:
 
 ```
 <type>(<scope>): <imperative summary, lowercase, no period>
@@ -60,8 +60,6 @@ ci(mobile): add flutter build apk step
 - One scope per commit. If a change spans several (e.g. `types` + `api` + `web` for a contract change), use the scope of the main change, or split the commits.
 - Breaking API contract changes use `!`, e.g. `feat(types)!: ...`, and include a `BREAKING CHANGE:` footer.
 - PRs are squash-merged, so **the PR title must be a valid conventional commit too**.
-
-**Branches:** `<type>/<scope>-<short-kebab-desc>`, e.g. `feat/mobile-progress-persistence`, `fix/api-cold-start-timeout`. Never prefix a branch with `claude/`.
 
 ## Style
 
