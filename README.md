@@ -4,7 +4,7 @@ Backend "sudoku machine": generates puzzles, classifies them by real difficulty 
 
 ## Layout
 
-- `packages/sudoku-core` — generator, brute-force solver (uniqueness checking), logical/technique solver, difficulty classifier. Pure TS, no HTTP/DB dependencies.
+- `packages/sudoku-core` — seeded generator (tier-aimed, with clue steering and symmetry-transform variants), bitmask brute-force solver (uniqueness checking), logical/technique solver (13 techniques, singles through XYZ-Wing and naked quads), difficulty classifier. Pure TS, no HTTP/DB dependencies.
 - `packages/api-types` — shared Zod schemas/DTOs for the API's request/response shapes. Any future client (web, Flutter) imports this instead of redeclaring types.
 - `apps/api` — Fastify server, Prisma schema, routes, and the pool-replenish job.
 - `apps/web` — Vite + React + TS web client (Phase 2 MVP), consuming `apps/api` via `@sudoku-2077/api-types`.
@@ -29,6 +29,7 @@ npm run dev:web                          # starts the web client on :5173
 - `npm run lint` / `npm run format` — ESLint / Prettier across the repo
 - `npm run dev:api` / `npm run dev:web` — start the API / web client in watch mode
 - `npm run replenish` — top up the puzzle pool per difficulty tier and pre-assign upcoming daily challenges
+- `npm run audit --workspace packages/sudoku-core -- [perProfile] [--json]` — generate puzzles with every tier profile, cross-check each against an independent reference solver, and print the tier mix, technique usage and timings. Exits non-zero on any correctness failure (CI runs it with 25 per profile)
 
 ## Web client (`apps/web`)
 

@@ -1,6 +1,6 @@
 # Roadmap: from current backend to a robust MVP
 
-Current state: the puzzle generator/classifier/pool backend is built and verified (`packages/sudoku-core`, `packages/api-types`, `apps/api`), and Phase 0 (backend hardening), Phase 1 (auth), and Phase 2 (web MVP client, including the cyberpunk re-theme) have shipped — see `README.md`. Phase 3 (wiring the frontend to the now-live auth endpoints) has landed; remaining work is Phase 3's follow-ups plus the Flutter mobile client (Phase 5).
+Current state: the puzzle generator/classifier/pool backend is built and verified (`packages/sudoku-core`, `packages/api-types`, `apps/api`; hardened in Phase 2.7), and Phase 0 (backend hardening), Phase 1 (auth), and Phase 2 (web MVP client, including the cyberpunk re-theme) have shipped — see `README.md`. Phase 3 (wiring the frontend to the now-live auth endpoints) has landed; remaining work is Phase 3's follow-ups plus the Flutter mobile client (Phase 5).
 
 Guiding principle: **Phase 0 comes first.** Auth, the web client, and a leaderboard should land on a backend that's already hardened, not get bolted onto one that isn't. Skipping Phase 0 means re-doing security/observability work later under a live user base instead of an empty one.
 
@@ -49,7 +49,7 @@ Guiding principle: **Phase 0 comes first.** Auth, the web client, and a leaderbo
 - [x] Core screens: title/menu, difficulty picker, daily challenge, puzzle board (grid input + calls to `/validate`), basic profile page listing past completions.
 - [x] Login/signup **UI** exists (`LoginForm`/`SignupForm`), but calls provisional endpoints (`/api/auth/*`) that don't exist until Phase 1 ships — non-functional until then, mocked in tests via MSW.
 - [x] Deploy target: decided and live — Vercel for `apps/web`, Render (free web service) for `apps/api`, Neon (free tier) for Postgres, and a GitHub Actions scheduled workflow for the pool-replenish job (Vercel's serverless model doesn't fit a long-running Fastify server). Config lives in `render.yaml` and `.github/workflows/replenish.yml`; manual account setup steps are in `README.md`'s Deployment notes.
-- [ ] **Follow-up:** watch the HARD-difficulty pool over the next few daily replenish runs. The first production seed (2026-09-16) only reached 14/20 HARD puzzles before hitting `MAX_GENERATION_ATTEMPTS` in `replenishPool.ts` — harder puzzles are rarer to land on via the random-givens generation strategy. Not blocking (14 is a usable pool, and the daily cron keeps retrying), but if it plateaus below 20 instead of climbing, revisit `MAX_GENERATION_ATTEMPTS` or the givens-range spread (`randomTargetGivens()`) in that file.
+- [x] **Follow-up (resolved by Phase 2.7):** watch the HARD-difficulty pool over the next few daily replenish runs. The first production seed (2026-09-16) only reached 14/20 HARD puzzles before hitting `MAX_GENERATION_ATTEMPTS` in `replenishPool.ts` — harder puzzles are rarer to land on via the random-givens generation strategy. Not blocking (14 is a usable pool, and the daily cron keeps retrying), but if it plateaus below 20 instead of climbing, revisit `MAX_GENERATION_ATTEMPTS` or the givens-range spread (`randomTargetGivens()`) in that file.
 
 ---
 
@@ -93,6 +93,40 @@ The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `
 
 ---
 
+## Phase 2.7 — Puzzle engine robustness & scale
+
+**Status: engine work shipped; per-move mistake checking pending a product decision.** Triggered by a report that on hard puzzles a player could place a digit that was wrong without being flagged. Investigation (2,300 generated puzzles cross-checked against an independent solver) found **no correctness bug in the generator or solvers**: every puzzle had a valid solution, givens matching it, and exactly one solution. The report is explained by the client's mistake rule (below). The investigation did surface real engine problems, fixed here:
+
+| Metric (random sample)                    | Before                                                              | After                                                                                                                                                                                    |
+| ----------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tier mix of generated puzzles             | 84% EASY · 5% MEDIUM · **0.2% HARD** · 11% HARDCORE                 | Aimed per tier: 99% of EASY-profile attempts land EASY, 30% of MEDIUM → MEDIUM, 26% of HARD → HARD, 37% of HARDCORE → HARDCORE (every other result is kept in whatever pool it lands in) |
+| Attempts to fill all four 20-puzzle pools | HARD never filled (prod seed stopped at 14/20 after 4,000 attempts) | ~75 attempts, under 3 s                                                                                                                                                                  |
+| Avg generation time                       | 66 ms (max ~900 ms)                                                 | 2–13 ms per profile                                                                                                                                                                      |
+| Uniqueness check, hardest known puzzle    | ~600 ms                                                             | a few ms (bitmask solver)                                                                                                                                                                |
+| Techniques known to the grader            | 5                                                                   | 13                                                                                                                                                                                       |
+| Reproducible puzzles                      | no (`Math.random`)                                                  | every stored puzzle has a `seed`                                                                                                                                                         |
+
+- [x] **Independent verification + CI audit.** `packages/sudoku-core/src/testing/referenceChecker.ts` is a deliberately naive solver that shares no code with `solver/`. `npm run audit --workspace packages/sudoku-core` checks every generated puzzle against it (valid solution, givens match, exactly one solution, logical answer matches, seed regenerates). CI runs it with 25 puzzles per profile and fails on any mismatch.
+- [x] **Solution oracle.** `solveLogically(grid, { solution })` checks every step. A technique that places a wrong digit or removes the true candidate throws and names itself. Generation always passes the solution, so a buggy technique can't mis-rate a stored puzzle, and tests pin down the exact technique that broke.
+- [x] **Seeded generation.** `createRng(seed)` (mulberry32). `Puzzle.seed` (new nullable column) stores strings like `HARD:k3j9x2a` or `HARD:k3j9x2a~v1` for variants, and `regeneratePuzzle(seed)` rebuilds the exact puzzle. A bug report can now say "seed X".
+- [x] **Bitmask brute-force solver.** Row/col/box digit masks and MRV branching, the generator's hot path.
+- [x] **Human-style grader.** Techniques, easiest first: hidden/naked single → pointing pair, box/line reduction, naked/hidden pair (MEDIUM) → X-Wing, naked/hidden triple, Swordfish, XY-Wing, XYZ-Wing, naked quad (HARD). Unsolved by all of these → HARDCORE (needs chains/guessing). Weights are about 10× the Sudoku Explainer ratings. `difficultyScore` = Σ weight × uses. HARDCORE scores start at 1000. Existing rows keep their old-scale scores.
+- [x] **Tier-aimed generation with clue steering.** `createPuzzleForTier(tier)`: EASY digs to 36–45 givens. Harder tiers dig until the puzzle is minimal, then, if it overshoots the target tier, add givens back from the solution one at a time until it lands in the target tier. Adding a given can't break uniqueness.
+- [x] **Variants.** `createPuzzleVariant` relabels digits, permutes rows/cols within bands and bands, and optionally transposes (~1.2 trillion variants per puzzle). The logic stays the same and the variant is re-rated. The replenish job multiplies each HARD/HARDCORE find into `VARIANTS_PER_RARE_FIND` (default 2) variants.
+- [x] **Replenish job** aims at the most-starved tier, buckets each puzzle by its honest rating, and stores seeds. The EASY pool only takes puzzles generated with the EASY profile, so it isn't filled with ~24-given singles-only leftovers.
+- [ ] **Per-move mistake checking (needs a decision).** Today a mistake is a _peer conflict_ (`apps/web/src/features/puzzle/useBoardState.ts`). A wrong digit that doesn't repeat a visible digit in its row/col/box is accepted silently and even extends the combo, and it's only caught at `/validate` when the board is full. At the start of a hard puzzle there are ~150 such "wrong but allowed" placements. Big sudoku apps check each move against the solution. Options:
+  1. Include `solution` in `PublicPuzzle`. Simplest, instant, works offline. The solution becomes visible in devtools, which only matters for leaderboard integrity. `/validate` stays the authority for recorded completions.
+  2. A server-side `POST /api/puzzles/:id/check` per placement. Keeps the solution off the client, but adds a round trip per move (painful on a cold Render instance) and is still a per-cell oracle.
+  3. Keep the peer-conflict rule, but stop awarding combo for unverified placements.
+
+  Whichever is chosen, the mobile port (Phase 5 "Board state") must mirror it.
+
+- [ ] **Harder techniques** — simple coloring, X-Chains/XY-Chains, then AIC/forcing chains. These split today's HARDCORE (everything beyond wings) into "EXPERT, still logical" and "requires guessing". Add each with oracle coverage in the seeded technique corpus test.
+- [ ] **Calibrate with player data.** Use `PuzzleCompletion.timeSeconds`/`mistakeCount` to adjust each puzzle's rating (Elo/Glicko-style, like chess puzzle ratings). Flag puzzles whose solve times don't match their tier.
+- [ ] **Scale-out generation** — if pools grow to thousands per tier, run generation in `worker_threads` and dedupe by canonical form (the minimum over the transform group), so variants of an already-stored puzzle aren't counted as new.
+
+---
+
 ## Phase 3 — Auth-dependent client work
 
 - [ ] Wire the existing `LoginForm`/`SignupForm` UI to the real `/api/auth/*` endpoints once Phase 1 ships.
@@ -117,11 +151,11 @@ The board itself stays plain DOM/React (`SudokuGrid`/`SudokuCell`'s accessible `
 `packages/sudoku-core` is **not** ported to Dart. The solution never leaves the server (`apps/api/src/mappers.ts` strips it) and validation is server-side, so the client needs only `stringToGrid`, `peersOf` and conflict detection — roughly 20 lines inline. Revisit a port only if offline play is wanted; a client-side hint system would not justify one either, since a `/hint` endpoint can read the already-stored `solution` column without invoking the solver.
 
 - [x] **Scaffold** — `apps/mobile` created (`com.robertvilladev.sudoku2077`, Android + iOS, Flutter 3.47.5 pinned in `pubspec.yaml`), feature-first layout, `--dart-define=API_BASE_URL` config, placeholder app with a smoke test, and `.github/workflows/mobile.yml` (path-filtered `dart format` + `flutter analyze` + `flutter test`). State pattern: `ChangeNotifier` + `provider` (added with the first notifier). Design: `docs/superpowers/specs/2026-09-19-flutter-mobile-setup-design.md`. iOS is unverified (no Mac / macOS CI job).
-- [ ] **API client** — hand-written DTOs for `PublicPuzzle` / `ValidatePuzzleResponse` against `package:http`. No codegen for three shapes. Use a request timeout that tolerates a Render free-tier cold start.
-- [ ] **Board state** — a `ChangeNotifier` port of `apps/web`'s `useBoardState` reducer (grid, notes, undo history, mistake/combo counters). Mirror web's mistake rule exactly: a mistake is a **peer conflict**, not a solution mismatch.
-- [ ] **Basic loop screens** — title → difficulty picker → board (grid, number pad with remaining counts, notes mode, undo, erase, timer, 3-mistake lose dialog, win dialog via `/validate`).
+- [x] **API client** — hand-written DTOs for `PublicPuzzle` / `ValidatePuzzleResponse` against `package:http`. No codegen for three shapes. Use a request timeout that tolerates a Render free-tier cold start.
+- [x] **Board state** — a `ChangeNotifier` port of `apps/web`'s `useBoardState` reducer (grid, notes, undo history, mistake/combo counters). Mirror web's mistake rule exactly: a mistake is a **peer conflict**, not a solution mismatch (under review — see Phase 2.7 "Per-move mistake checking").
+- [x] **Basic loop screens** — title → difficulty picker → board (grid, number pad with remaining counts, notes mode, undo, erase, timer, 3-mistake lose dialog, win dialog via `/validate`). Also a pause overlay and a confirm-on-back. `--dart-define=USE_MOCK_API=true` runs the whole loop against an in-app fake (see `apps/mobile/README.md`).
 - [ ] **Progress persistence** — `shared_preferences`, mirroring web's `sudoku2077.progress.<puzzleId>` shape. Local only, never synced, so a puzzle started on web will not resume on mobile.
-- [ ] **Theme parity** — cyberpunk palette hand-converted from web's oklch values to sRGB hex (Flutter has no oklch), JetBrains Mono bundled as a font asset. Flat colours only; glow and scanline effects are the Phase 2.6 equivalent and are not part of the basic loop.
+- [ ] **Theme parity** — cyberpunk palette hand-converted from web's oklch values to sRGB hex (Flutter has no oklch), plus the font chosen in Phase 5.5 bundled as a font asset (JetBrains Mono until then). Flat colours only; glow, scanline, animation and sound are Phase 5.5, not part of the basic loop.
 - [ ] **Follow-up, not blocking:** daily challenge screen (`GET /api/daily-challenge`) — one endpoint and one button, but not part of the basic loop.
 
 ### Phase 5 — pending items, corner cases, and things to consider
@@ -130,8 +164,8 @@ Surfaced while landing the scaffold (design: `docs/superpowers/specs/2026-09-19-
 
 **Pending (deferred on purpose)**
 
-- [ ] **Add `provider`** to `pubspec.yaml` together with the first `ChangeNotifier` (Board state) and provide `ApiClient` at the root. Not added at scaffold time because nothing used it yet.
-- [ ] **Navigation package** (`go_router` vs plain `Navigator`) — decide in "Basic loop screens"; three screens may not justify a dependency.
+- [x] **Add `provider`** to `pubspec.yaml` together with the first `ChangeNotifier` (Board state) and provide `ApiClient` at the root. Not added at scaffold time because nothing used it yet.
+- [x] **Navigation package** — plain `Navigator`; three screens don't justify `go_router`.
 - [ ] **`flutter build apk` in `mobile.yml`** — add once a native plugin (`shared_preferences`) lands, so plugin/Gradle breakage is caught in CI and not on a dev machine.
 - [ ] **iOS is unverified.** It can't be built on Windows or the ubuntu runner. Needs a Mac or a `macos-latest` CI job (billed at a higher minute multiplier on private repos) before iOS is claimed to work. Also confirm the iOS simulator can reach `http://localhost:3000` (ATS should exempt `localhost`/IPs, but it hasn't been tried).
 - [ ] **Release signing.** `android/app/build.gradle.kts` still signs `release` with the **debug** key (Flutter's template default). Needs a real keystore (kept out of git, injected via CI secrets) before any Play Store upload. Store publishing itself is out of scope for Phase 5.
@@ -149,6 +183,53 @@ Surfaced while landing the scaffold (design: `docs/superpowers/specs/2026-09-19-
 - **Prettier does not format `apps/mobile/`** (`.prettierignore`) and ESLint ignores it; Dart formatting is enforced by `dart format` in CI only. The husky pre-commit hook does not run `dart format`, so unformatted Dart is caught in CI, not at commit time.
 - **Local-only progress.** `shared_preferences` state is per device and never synced, and `PuzzleCompletion` is only recorded for authenticated solves — so anonymous mobile wins leave no server-side record until Phase 6.
 - **Mistake rule parity.** A mistake is a _peer conflict_, not a solution mismatch (as on web). If web's rule ever changes, mobile's port of `useBoardState` must change in the same breath — there is no shared code to keep them aligned.
+
+---
+
+## Phase 5.4 — Localization (web + mobile)
+
+**Status: approved. Runs before Phase 5.5.** Reasoning and details are in `docs/superpowers/specs/2026-09-26-localization-strategy.md`. One shared ICU/ARB catalog in `packages/i18n`, read by `react-intl` on web and `flutter gen-l10n` on mobile. MVP languages: **English (default), Spanish, French, Catalan**. Extracting the existing English text comes first, then the three translations.
+
+**Decided:** the difficulty codenames (`ROOKIE RUN` … `GHOST PROTOCOL`) and the `SUDOKU 2077` wordmark stay in English as brand names. Everything else is translated, including the terminal-style lines. The codenames are still catalog keys, so translating them later needs no code change.
+
+**Work**
+
+- [ ] **`packages/i18n`.** `en.arb` as the source, plus `es.arb`, `fr.arb`, `ca.arb`. Keys are camelCase with a feature prefix, since ARB keys must be valid Dart identifiers. A build step emits per-locale JSON for web and generated message-ID types. A CI check covers key parity, matching placeholders, and ICU parsing.
+- [ ] **Separate wire values from labels.** Mobile shows `Difficulty.wireName` directly, and both clients hard-code the same difficulty flavor text. Labels should come from the catalog, and `EASY`/`HARDCORE` should stay wire-only.
+- [ ] **Web extraction.** Add a `react-intl` provider fed by a new `locale` setting in `SettingsContext`, default `en`, with no browser detection (the Phase 3 settings sync covers it later). Keep `<html lang>` in sync and lazy-load each locale's JSON. Replace the `toLocaleDateString()` in `ProfilePage` with a locale-aware formatter. Add the `formatjs/no-literal-string` ESLint rule. The test setup wraps the app in the `en` provider.
+- [ ] **Web language setting.** Add a LANGUAGE row to the settings panel. That panel is only in the in-game pause dialog today, so also add a SETTINGS entry to the title menu that opens the same panel. No first-visit picker on web.
+- [ ] **Mobile extraction.** Add `flutter_localizations`, `intl`, and `l10n.yaml` pointing at the shared ARB files. If `gen-l10n` rejects an `arb-dir` outside the package, add a sync script plus a CI staleness check instead. Replace inline `Text('...')` with `AppLocalizations`. Widget tests pump the localization delegates. `mobile.yml` also runs when `packages/i18n/**` changes.
+- [ ] **Mobile language picker.** A first-launch screen, shown before the title screen, with English preselected. It's shown once, and the choice plus a `languageChosen` flag go in `shared_preferences` (the same dependency as Phase 5 progress persistence; whichever lands first adds it, together with `flutter build apk` in CI). Also a new **OPTIONS** entry in the title-screen menu with the language setting. The Phase 5.5 settings panel moves into it later. Language names are always shown in their own language (English, Español, Français, Català).
+- [ ] **API error codes.** Add a stable `code` next to `error` in the `packages/api-types` error shape. Clients translate `code`, and `error` stays English for developers. Don't translate on the server.
+- [ ] **Translations: es, fr, ca.** A length and overflow pass on the HUD, tier cards and number pad (expect about 30% longer text). French needs a narrow no-break space before `: ; ! ?`. Also iOS `CFBundleLocalizations` and Android `locales_config.xml`.
+- [ ] **Out of scope for v1:** non-Latin scripts and right-to-left (RTL) languages. New mobile layouts should still use `EdgeInsetsDirectional`/`AlignmentDirectional`, so adding RTL later is cheap.
+
+---
+
+## Phase 5.5 — Cyberpunk polish (web + mobile)
+
+Makes both clients feel like the same game, and makes the board react more while staying simple. Everything here ships on **both** `apps/web` and `apps/mobile` unless marked otherwise. Start with a design proof of concept (a static/interactive mockup of the board states below) so the font, colours and effects are decided once and then implemented twice.
+
+- [ ] **Cyberpunk font.** Replace JetBrains Mono with a font that reads as cyberpunk. Pick it in the proof of concept. The digits must stay legible at cell size, so a likely split is a display face for the logo and headings, and a techy mono or semi-mono face for UI and grid digits. Candidates (all SIL OFL, on Google Fonts, available as `@fontsource/*` for web and bundleable as Flutter assets): Orbitron or Audiowide (display only, too wide for body text), Chakra Petch, Oxanium, Share Tech Mono. Use tabular or monospaced digits so the timer doesn't jitter. It must also cover the Phase 5.4 languages (en/es/fr/ca), including accented capitals and the Catalan `·`, since the UI is mostly uppercase. Test each candidate with the string in the localization spec.
+- [ ] **Given vs. player digits, clearly distinct.** Today web makes givens `neutral-200` semibold and entries `neutral-400` medium: two greys that are hard to tell apart, and the same-value highlight recolours both to `accent-300`, which erases the difference. Mobile uses white bold vs. `accent-300`. Target, identical on both clients:
+  - Givens are "hardwired": neutral/white, heavier weight, plus a faint cell tint so they read as fixed.
+  - Player digits are "injected": the accent colour, regular weight, no cell tint.
+  - Highlights (selected, peer, same value, conflict) change the **cell background only**, never the digit's colour. The only exception is conflict red, so the given/player distinction survives every highlight.
+- [ ] **Unit-complete effects.** When a row, column or 3×3 box becomes full with no conflicts:
+  - A one-shot neon **scan sweep** runs along the unit, about 400 ms. Rows sweep horizontally, columns vertically, and boxes flash a corner-bracket glow (web already has `CornerBrackets.tsx`).
+  - Completed **boxes** keep a very faint persistent tint ("sector secured"). Rows and columns get the sweep only, so a nearly-solved board doesn't turn into a wall of glow.
+  - Completing several units in one move merges into a single pulse radiating from the placed cell, not stacked animations.
+  - A short rising chirp plays, pitched higher for each unit completed at once, plus a light haptic on mobile.
+  - Undo that breaks a unit removes its persistent tint.
+  - It respects the effects/sound settings and reduced motion (`prefers-reduced-motion` on web, `MediaQuery.disableAnimations` on Flutter).
+  - Caveat: under today's peer-conflict rule, "full with no conflicts" is **not** "correct". A completed unit can still hold a wrong digit, so the effect must not claim correctness. If Phase 2.7's per-move decision puts the solution on the client, the effect can use real correctness instead.
+- [ ] **Flutter animations and sounds (mobile only).** Port the Phase 2.6 set:
+  - Visuals: combo glow, screen-shake on a mistake, a "decrypting" puzzle-load transition, win-burst particles, a scanline/CRT overlay, and a given/player digit pop-in.
+  - Sounds: place, error, notes toggle and win, plus the unit-complete chirp above. Web synthesizes SFX live with Web Audio. Flutter has no equivalent, so render the web synth patches to short audio assets and play them with a low-latency player (e.g. `audioplayers`/`soloud`), keeping the sound identical across clients.
+  - Haptics (`HapticFeedback`) on mistake, unit complete and win: a mobile-only extra.
+  - Settings: a pause-menu settings panel (sound, effects, haptics, auto-clear notes, ambient hum), persisted with `shared_preferences`, mirroring web's `SettingsContext`.
+
+---
 
 ---
 

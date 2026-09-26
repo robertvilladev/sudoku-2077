@@ -5,3 +5,5 @@ export * from "./puzzleFactory.js";
 export * from "./solver/bruteForceSolver.js";
 export * from "./solver/logicalSolver.js";
 export * from "./solver/candidates.js";
+export * from "./random.js";
+export * from "./transforms.js";

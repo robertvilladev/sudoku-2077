@@ -1,18 +1,30 @@
 import "dotenv/config";
-import { createPuzzle, type Difficulty } from "@sudoku-2077/sudoku-core";
+import {
+  createPuzzleForTier,
+  createPuzzleVariant,
+  type Difficulty,
+  type Puzzle,
+} from "@sudoku-2077/sudoku-core";
 import { prisma } from "../db/client.js";
 
 const MIN_POOL_SIZE = Number(process.env.MIN_POOL_SIZE ?? 20);
 const DAILY_CHALLENGE_LOOKAHEAD_DAYS = Number(process.env.DAILY_CHALLENGE_LOOKAHEAD_DAYS ?? 30);
+// Rare HARD/HARDCORE finds are multiplied into this many relabelled/permuted variants (same logic,
+// different-looking grid) instead of paying to generate each one from scratch.
+const VARIANTS_PER_RARE_FIND = Number(process.env.VARIANTS_PER_RARE_FIND ?? 2);
 const MAX_GENERATION_ATTEMPTS = 4000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const TIERS: Difficulty[] = ["EASY", "MEDIUM", "HARD", "HARDCORE"];
+const RARE_TIERS: Difficulty[] = ["HARD", "HARDCORE"];
 
-// Difficulty isn't directly steerable at generation time — we spread givens counts across a wide
-// range and let the logical solver classify each puzzle, then bucket it wherever it actually landed.
-function randomTargetGivens(): number {
-  return 22 + Math.floor(Math.random() * 24); // 22..45
+// The tier furthest below target, preferring harder tiers on a tie since they take more attempts to fill.
+function mostStarvedTier(counts: Map<Difficulty, number>): Difficulty {
+  let best = TIERS[0];
+  for (const tier of TIERS) {
+    if ((counts.get(tier) ?? 0) <= (counts.get(best) ?? 0)) best = tier;
+  }
+  return best;
 }
 
 async function replenishPools(): Promise<void> {
@@ -23,29 +35,47 @@ async function replenishPools(): Promise<void> {
   console.log("[replenish] pool counts before:", Object.fromEntries(counts));
 
   let attempts = 0;
-  while (attempts < MAX_GENERATION_ATTEMPTS && TIERS.some((tier) => (counts.get(tier) ?? 0) < MIN_POOL_SIZE)) {
+  while (
+    attempts < MAX_GENERATION_ATTEMPTS &&
+    TIERS.some((tier) => (counts.get(tier) ?? 0) < MIN_POOL_SIZE)
+  ) {
     attempts++;
-    const puzzle = createPuzzle({ targetGivens: randomTargetGivens() });
-    const currentCount = counts.get(puzzle.difficulty) ?? 0;
+    // Aim at the tier that needs puzzles most, but classification is honest: whatever tier the
+    // puzzle actually lands in is where it's stored (if that pool still has room).
+    const aimedAt = mostStarvedTier(counts);
+    const puzzle = createPuzzleForTier(aimedAt);
+    const batch: Puzzle[] = [puzzle];
+    if (RARE_TIERS.includes(puzzle.difficulty)) {
+      for (let v = 0; v < VARIANTS_PER_RARE_FIND; v++) batch.push(createPuzzleVariant(puzzle));
+    }
 
-    if (currentCount >= MIN_POOL_SIZE) continue; // this tier is already full; discard and keep trying
+    for (const candidate of batch) {
+      const currentCount = counts.get(candidate.difficulty) ?? 0;
+      if (currentCount >= MIN_POOL_SIZE) continue; // this tier is already full; discard
+      // A minimal puzzle that turned out singles-only is technically EASY, but with ~24 givens it's a
+      // slog; the EASY pool only takes puzzles generated with the EASY profile's roomier givens range.
+      if (candidate.difficulty === "EASY" && aimedAt !== "EASY") continue;
 
-    await prisma.puzzle.create({
-      data: {
-        givens: puzzle.givens,
-        solution: puzzle.solution,
-        difficulty: puzzle.difficulty,
-        difficultyScore: puzzle.difficultyScore,
-        techniques: puzzle.techniques,
-        givensCount: puzzle.givensCount,
-      },
-    });
-    counts.set(puzzle.difficulty, currentCount + 1);
+      await prisma.puzzle.create({
+        data: {
+          givens: candidate.givens,
+          solution: candidate.solution,
+          difficulty: candidate.difficulty,
+          difficultyScore: candidate.difficultyScore,
+          techniques: candidate.techniques,
+          givensCount: candidate.givensCount,
+          seed: candidate.seed,
+        },
+      });
+      counts.set(candidate.difficulty, currentCount + 1);
+    }
   }
 
-  console.log("[replenish] pool counts after:", Object.fromEntries(counts));
+  console.log(`[replenish] pool counts after ${attempts} generation attempts:`, Object.fromEntries(counts));
   if (attempts >= MAX_GENERATION_ATTEMPTS) {
-    console.warn(`[replenish] hit max generation attempts (${MAX_GENERATION_ATTEMPTS}); some tiers may still be under target`);
+    console.warn(
+      `[replenish] hit max generation attempts (${MAX_GENERATION_ATTEMPTS}); some tiers may still be under target`
+    );
   }
 }
 

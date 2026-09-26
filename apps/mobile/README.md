@@ -25,6 +25,16 @@ flutter run --dart-define=API_BASE_URL=https://<your-render-service>.onrender.co
 Start the API first (`npm run dev:api` from the repo root). Debug builds allow cleartext `http://` to the
 emulator host; release builds do not.
 
+No backend handy? Run against the in-app fake instead:
+
+```bash
+flutter run --dart-define=USE_MOCK_API=true
+```
+
+In mock mode every tier serves the same classic puzzle, except **EASY**, which is the solution with three
+cells blank (top-left `5`, centre `5`, bottom-right `9`) so the win dialog is three taps away. Three
+conflicting placements (e.g. a `5` anywhere else in the top row) trigger the lose dialog.
+
 ## Checks (same as CI)
 
 ```bash
@@ -40,9 +50,16 @@ pure Dart. Directories are added when a task needs them.
 
 ```
 lib/
-  main.dart, app.dart   # entrypoint + MaterialApp
-  core/config.dart      # API_BASE_URL
-  features/<name>/{domain,data,state,ui}/   # as features land
+  main.dart, app.dart          # entrypoint; provides ApiClient to the tree
+  core/                        # config (API_BASE_URL, USE_MOCK_API), theme
+  domain/sudoku.dart           # peersOf, parseGrid, Difficulty — pure Dart
+  features/menu/               # title + difficulty screens
+  features/puzzle/data/        # ApiClient (talks to apps/api), DTOs, mock backend
+  features/puzzle/state/       # BoardState — port of web's useBoardState
+  features/puzzle/ui/          # board screen, grid, number pad
 ```
 
-State is one `ChangeNotifier` per feature exposed through `provider` (added with the first notifier).
+State is one `ChangeNotifier` per feature exposed through `provider`. Navigation is plain `Navigator`
+(three screens don't justify `go_router`). `ApiClient` is the Dart counterpart of
+`apps/web/src/lib/apiClient.ts`: it calls the same `apps/api` endpoints, with a 60 s timeout for Render
+cold starts and one automatic retry for GETs only (never for `/validate`).

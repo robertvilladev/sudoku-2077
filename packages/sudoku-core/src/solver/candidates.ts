@@ -36,3 +36,25 @@ export function unitsList(): number[][] {
   for (let b = 0; b < 9; b++) units.push(cellsInBox(b));
   return units;
 }
+
+/** Peer sets for every cell, precomputed once: techniques ask "does cell A see cell B?" constantly. */
+export const PEER_SETS: ReadonlySet<number>[] = Array.from({ length: 81 }, (_, i) => new Set(peersOf(i)));
+
+/** All k-element combinations of `items`, in order. */
+export function combinations<T>(items: readonly T[], k: number): T[][] {
+  const result: T[][] = [];
+  const combo: T[] = [];
+  function walk(start: number): void {
+    if (combo.length === k) {
+      result.push(combo.slice());
+      return;
+    }
+    for (let i = start; i <= items.length - (k - combo.length); i++) {
+      combo.push(items[i]);
+      walk(i + 1);
+      combo.pop();
+    }
+  }
+  walk(0);
+  return result;
+}

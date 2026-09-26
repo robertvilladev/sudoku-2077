@@ -12,12 +12,21 @@ export const Difficulty = {
 } as const;
 export type Difficulty = (typeof Difficulty)[keyof typeof Difficulty];
 
+// Stored as plain strings in Puzzle.techniques (a String[] column), so adding a technique needs no migration.
 export const TechniqueName = {
-  NAKED_SINGLE: "NAKED_SINGLE",
   HIDDEN_SINGLE: "HIDDEN_SINGLE",
-  NAKED_PAIR: "NAKED_PAIR",
+  NAKED_SINGLE: "NAKED_SINGLE",
   POINTING_PAIR: "POINTING_PAIR",
+  BOX_LINE_REDUCTION: "BOX_LINE_REDUCTION",
+  NAKED_PAIR: "NAKED_PAIR",
+  HIDDEN_PAIR: "HIDDEN_PAIR",
   X_WING: "X_WING",
+  NAKED_TRIPLE: "NAKED_TRIPLE",
+  SWORDFISH: "SWORDFISH",
+  HIDDEN_TRIPLE: "HIDDEN_TRIPLE",
+  XY_WING: "XY_WING",
+  XYZ_WING: "XYZ_WING",
+  NAKED_QUAD: "NAKED_QUAD",
 } as const;
 export type TechniqueName = (typeof TechniqueName)[keyof typeof TechniqueName];
 
@@ -28,6 +37,8 @@ export interface Puzzle {
   difficultyScore: number;
   techniques: TechniqueName[];
   givensCount: number;
+  /** Seed that regenerates this exact puzzle via `createPuzzle({ seed })`. */
+  seed: string;
 }
 
 export function rowOf(index: number): number {

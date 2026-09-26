@@ -23,6 +23,8 @@ model Puzzle {
   difficultyScore Int
   techniques      String[]
   givensCount     Int
+  /// Regenerates this puzzle via sudoku-core's regeneratePuzzle(); null for puzzles made before seeds existed.
+  seed            String?
   createdAt       DateTime           @default(now())
   servedCount     Int                @default(0)
   dailyChallenge  DailyChallenge?
