@@ -190,9 +190,7 @@ Surfaced while landing the scaffold (design: `docs/superpowers/specs/2026-09-19-
 
 **Status: approved. Runs before Phase 5.5.** Reasoning and details are in `docs/superpowers/specs/2026-09-26-localization-strategy.md`. One shared ICU/ARB catalog in `packages/i18n`, read by `react-intl` on web and `flutter gen-l10n` on mobile. MVP languages: **English (default), Spanish, French, Catalan**. Extracting the existing English text comes first, then the three translations.
 
-**Still to confirm**
-
-- [ ] **Flavor texts.** Proposed: the difficulty codenames (`ROOKIE RUN` … `GHOST PROTOCOL`) and the `SUDOKU 2077` wordmark stay English as brand names, and everything else is translated. They're catalog keys either way, so this can change later without code changes.
+**Decided:** the difficulty codenames (`ROOKIE RUN` … `GHOST PROTOCOL`) and the `SUDOKU 2077` wordmark stay in English as brand names. Everything else is translated, including the terminal-style lines. The codenames are still catalog keys, so translating them later needs no code change.
 
 **Work**
 

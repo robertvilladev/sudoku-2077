@@ -1,7 +1,6 @@
 # Localization (i18n) strategy — web + mobile
 
-Status: **approved 2026-09-26**, except for one detail still open: which flavor texts stay in
-English (see "Decisions"). Covers adding languages to `apps/web` and `apps/mobile`. The roadmap
+Status: **approved 2026-09-26.** Covers adding languages to `apps/web` and `apps/mobile`. The roadmap
 entry is Phase 5.4 in `ROADMAP.md`; this doc holds the reasoning.
 
 ## Where we start
@@ -177,10 +176,9 @@ Decided 2026-09-26.
 3. **Timing: English extraction is part of this phase, and this phase runs before Phase 5.5.**
    That's why it's numbered 5.4. Phase 5.5 then adds its new strings (settings panel, effect
    labels) straight to the catalog.
-4. **Flavor texts: still to confirm.** This isn't about the font. Any of the candidate fonts can
-   draw Spanish, French or Catalan text once the glyph check passes. The question is only
-   whether some stylized _names_ should stay in English on purpose, the way a game keeps its
-   brand names. The proposed default, to be confirmed:
+4. **Flavor texts: difficulty codenames stay in English.** This is a naming choice, not a font
+   limit. Any of the candidate fonts can draw Spanish, French or Catalan text once the glyph check
+   passes.
    - Keep the four difficulty codenames (`ROOKIE RUN`, `STREET LEVEL`, `CORPO GRADE`,
      `GHOST PROTOCOL`) and the `SUDOKU 2077` wordmark in English, as brand names.
    - Translate everything else, including the terminal-style lines, which carry meaning. For
