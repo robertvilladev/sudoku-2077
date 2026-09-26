@@ -190,7 +190,7 @@ Surfaced while landing the scaffold (design: `docs/superpowers/specs/2026-09-19-
 
 Makes both clients feel like the same game, and makes the board react more while staying simple. Everything here ships on **both** `apps/web` and `apps/mobile` unless marked otherwise. Start with a design proof of concept (a static/interactive mockup of the board states below) so the font, colours and effects are decided once and then implemented twice.
 
-- [ ] **Cyberpunk font.** Replace JetBrains Mono with a font that reads as cyberpunk. Pick it in the proof of concept. The digits must stay legible at cell size, so a likely split is a display face for the logo and headings, and a techy mono or semi-mono face for UI and grid digits. Candidates (all SIL OFL, on Google Fonts, available as `@fontsource/*` for web and bundleable as Flutter assets): Orbitron or Audiowide (display only, too wide for body text), Chakra Petch, Oxanium, Share Tech Mono. Use tabular or monospaced digits so the timer doesn't jitter.
+- [ ] **Cyberpunk font.** Replace JetBrains Mono with a font that reads as cyberpunk. Pick it in the proof of concept. The digits must stay legible at cell size, so a likely split is a display face for the logo and headings, and a techy mono or semi-mono face for UI and grid digits. Candidates (all SIL OFL, on Google Fonts, available as `@fontsource/*` for web and bundleable as Flutter assets): Orbitron or Audiowide (display only, too wide for body text), Chakra Petch, Oxanium, Share Tech Mono. Use tabular or monospaced digits so the timer doesn't jitter. Check glyph coverage against the Phase 5.6 target languages. Most of these fonts are Latin-only, so Cyrillic or CJK would need a fallback stack.
 - [ ] **Given vs. player digits, clearly distinct.** Today web makes givens `neutral-200` semibold and entries `neutral-400` medium: two greys that are hard to tell apart, and the same-value highlight recolours both to `accent-300`, which erases the difference. Mobile uses white bold vs. `accent-300`. Target, identical on both clients:
   - Givens are "hardwired": neutral/white, heavier weight, plus a faint cell tint so they read as fixed.
   - Player digits are "injected": the accent colour, regular weight, no cell tint.
@@ -208,6 +208,30 @@ Makes both clients feel like the same game, and makes the board react more while
   - Sounds: place, error, notes toggle and win, plus the unit-complete chirp above. Web synthesizes SFX live with Web Audio. Flutter has no equivalent, so render the web synth patches to short audio assets and play them with a low-latency player (e.g. `audioplayers`/`soloud`), keeping the sound identical across clients.
   - Haptics (`HapticFeedback`) on mistake, unit complete and win: a mobile-only extra.
   - Settings: a pause-menu settings panel (sound, effects, haptics, auto-clear notes, ambient hum), persisted with `shared_preferences`, mirroring web's `SettingsContext`.
+
+---
+
+## Phase 5.6 — Localization (web + mobile)
+
+**Status: proposal. Needs decisions before any work starts.** Options, trade-offs and the reasoning are in `docs/superpowers/specs/2026-09-26-localization-strategy.md`. Recommended approach: one shared ICU/ARB catalog in `packages/i18n`, read by `react-intl` on web and `flutter gen-l10n` on mobile. Ship English-only extraction first. Adding real languages is a separate step after that.
+
+**Decisions needed first**
+
+- [ ] **Sharing approach.** Per-client catalogs, a shared ARB catalog (recommended), or a translation management system (TMS) as the source of truth.
+- [ ] **First target languages.** This determines the glyph coverage the Phase 5.5 font needs.
+- [ ] **Timing.** Extract strings before Phase 5.5 adds more copy, or after it ships.
+- [ ] **Flavor copy.** Which cyberpunk strings (`GHOST PROTOCOL`, `// choose your clearance level`) stay in English on purpose.
+- [ ] **In-app language override.** Whether to offer one, or just follow the device or browser language.
+
+**Work (assuming the recommendation)**
+
+- [ ] **`packages/i18n`.** `en.arb` as the source. Keys are camelCase with a feature prefix, since ARB keys must be valid Dart identifiers. A build step emits per-locale JSON for web and generated message-ID types. A CI check covers key parity, matching placeholders, and ICU parsing.
+- [ ] **Separate wire values from labels.** Mobile shows `Difficulty.wireName` directly, and both clients hard-code the same difficulty flavor text. Labels should come from the catalog, and `EASY`/`HARDCORE` should stay wire-only.
+- [ ] **Web extraction.** Add a `react-intl` provider fed by `SettingsContext` (the locale is stored with the other settings, so the Phase 3 settings sync covers it). Use `navigator.languages` detection with an `en` fallback, keep `<html lang>` in sync, and lazy-load each locale's JSON. Replace the `toLocaleDateString()` in `ProfilePage` with a locale-aware formatter. Add the `formatjs/no-literal-string` ESLint rule. The test setup wraps the app in the `en` provider.
+- [ ] **Mobile extraction.** Add `flutter_localizations`, `intl`, and `l10n.yaml` pointing at the shared ARB files. If `gen-l10n` rejects an `arb-dir` outside the package, add a sync script plus a CI staleness check instead. Replace inline `Text('...')` with `AppLocalizations`. Widget tests pump the localization delegates. `mobile.yml` also runs when `packages/i18n/**` changes.
+- [ ] **API error codes.** Add a stable `code` next to `error` in the `packages/api-types` error shape. Clients translate `code`, and `error` stays English for developers. Don't translate on the server.
+- [ ] **First additional language.** Translation files and a length and overflow pass on the HUD, tier cards and number pad (expect about 30% longer text). Also iOS `CFBundleLocalizations` and Android `locales_config.xml`.
+- [ ] **Out of scope for v1:** right-to-left (RTL) languages. New mobile layouts should still use `EdgeInsetsDirectional`/`AlignmentDirectional`, so adding RTL later is cheap.
 
 ---
 
