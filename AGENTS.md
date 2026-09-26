@@ -18,6 +18,7 @@ Rules for AI agents working in this repo. Keep this file short. Details live in 
 | `apps/mobile`           | Flutter client. **Not** an npm workspace           | `mobile` |
 | `packages/sudoku-core`  | Generator, solvers, classifier. Pure TS, no IO     | `core`   |
 | `packages/api-types`    | Shared Zod schemas/DTOs, the API contract          | `types`  |
+| `packages/i18n`         | Shared ARB catalog (ICU) for web and mobile        | `i18n`   |
 | root, `.github`, config | Tooling, CI, deploy (`render.yaml`, `vercel.json`) | `repo`   |
 
 Invariants:
