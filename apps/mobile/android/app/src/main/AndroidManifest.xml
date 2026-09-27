@@ -2,7 +2,7 @@
     <!-- Flutter only adds INTERNET to the debug/profile manifests; release builds need it here. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="sudoku2077"
+        android:label="Sudoku 2077"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:localeConfig="@xml/locales_config">
