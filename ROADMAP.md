@@ -169,7 +169,8 @@ Surfaced while landing the scaffold (design: `docs/superpowers/specs/2026-09-19-
 - [x] **`flutter build apk` in `mobile.yml`** — added with the Phase 5.4 language picker (`shared_preferences`), so plugin/Gradle breakage is caught in CI and not on a dev machine.
 - [ ] **iOS is unverified.** It can't be built on Windows or the ubuntu runner. Needs a Mac or a `macos-latest` CI job (billed at a higher minute multiplier on private repos) before iOS is claimed to work. Also confirm the iOS simulator can reach `http://localhost:3000` (ATS should exempt `localhost`/IPs, but it hasn't been tried).
 - [ ] **Release signing.** `android/app/build.gradle.kts` still signs `release` with the **debug** key (Flutter's template default). Needs a real keystore (kept out of git, injected via CI secrets) before any Play Store upload. Store publishing itself is out of scope for Phase 5.
-- [ ] **App identity polish** — launcher icon and splash are Flutter defaults; the Android label is `sudoku2077` and the iOS display name `Sudoku2077` (should read "Sudoku 2077"). The application ID `com.robertvilladev.sudoku2077` is effectively permanent once published.
+- [x] **App identity polish** — launcher icon (concept X1, adaptive + themed on Android, iOS, web favicon) and the "Sudoku 2077" display name on both platforms. Design: `docs/superpowers/specs/2026-09-27-app-icon-design.md`; regenerate with `node scripts/render-icons.mjs` then `dart run flutter_launcher_icons`. The application ID `com.robertvilladev.sudoku2077` is effectively permanent once published.
+- [ ] **Launch background** — the native launch screen is still Flutter's white. Splash art was dropped (Android 12+ only allows a colour plus the icon); set the background to `#161826` so there is no white flash.
 
 **Corner cases to keep in mind**
 
