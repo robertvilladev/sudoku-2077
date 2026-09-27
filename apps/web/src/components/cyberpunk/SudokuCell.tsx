@@ -1,5 +1,6 @@
 import { clsx } from "clsx";
 import { motion } from "motion/react";
+import { useIntl } from "react-intl";
 import { useSettings } from "../../lib/settings/SettingsContext.js";
 import { GlitchText } from "./GlitchText.js";
 
@@ -33,12 +34,17 @@ export function SudokuCell({
   onSelect,
 }: SudokuCellProps) {
   const { scanlineOn } = useSettings();
+  const intl = useIntl();
 
   return (
     <button
       type="button"
       role="gridcell"
-      aria-label={`Row ${row + 1}, column ${col + 1}, ${value === 0 ? "empty" : value}`}
+      aria-label={
+        value === 0
+          ? intl.formatMessage({ id: "cellEmpty" }, { row: row + 1, col: col + 1 })
+          : intl.formatMessage({ id: "cellFilled" }, { row: row + 1, col: col + 1, value })
+      }
       aria-selected={isSelected}
       data-state={isConflict ? "conflict" : isGiven ? "given" : "default"}
       onClick={onSelect}
@@ -84,9 +90,9 @@ export function SudokuCell({
             className={clsx(
               isSameValueHighlighted
                 ? "font-semibold font-medium text-accent-300"
-                : (isGiven
-                    ? "font-semibold text-neutral-200"
-                    : "font-medium text-neutral-400")
+                : isGiven
+                  ? "font-semibold text-neutral-200"
+                  : "font-medium text-neutral-400"
             )}
           >
             {value}

@@ -1,6 +1,7 @@
 import { LightningIcon } from "@phosphor-icons/react";
 import { clsx } from "clsx";
 import { motion } from "motion/react";
+import { FormattedMessage } from "react-intl";
 import { useSettings } from "../../lib/settings/SettingsContext.js";
 
 export function ComboBadge({ combo }: { combo: number }) {
@@ -15,9 +16,14 @@ export function ComboBadge({ combo }: { combo: number }) {
   };
 
   const badge = (
-    <span className={clsx("flex items-center gap-1 font-mono text-[13px] text-accent-300", getGlowClass())}>
+    <span
+      className={clsx(
+        "flex items-center gap-1 font-mono text-[13px] text-accent-300 uppercase",
+        getGlowClass()
+      )}
+    >
       <LightningIcon weight="fill" />
-      COMBO ×{combo}
+      <FormattedMessage id="hudCombo" values={{ combo }} />
     </span>
   );
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 import '../../domain/sudoku.dart';
+import '../../l10n/l10n.dart';
 import '../puzzle/ui/board_screen.dart';
 
 class DifficultyScreen extends StatelessWidget {
@@ -9,15 +10,16 @@ class DifficultyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('SELECT DIFFICULTY')),
+      appBar: AppBar(title: Text(l10n.difficultySelectTitle.toUpperCase())),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text(
-              '// choose your clearance level',
-              style: TextStyle(fontSize: 12, color: Palette.neutral500),
+            Text(
+              l10n.difficultyPrompt,
+              style: const TextStyle(fontSize: 12, color: Palette.neutral500),
             ),
             const SizedBox(height: 16),
             for (final difficulty in Difficulty.values)
@@ -39,6 +41,7 @@ class _TierCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Material(
       color: Palette.surface,
       borderRadius: BorderRadius.circular(14),
@@ -56,14 +59,14 @@ class _TierCard extends StatelessWidget {
             spacing: 8,
             children: [
               Text(
-                difficulty.wireName,
+                difficulty.label(l10n).toUpperCase(),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
-                difficulty.flavor,
+                difficulty.codename(l10n),
                 style: const TextStyle(fontSize: 11, color: Palette.accent300),
               ),
             ],

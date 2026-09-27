@@ -1,9 +1,11 @@
 import { ClockIcon, PauseIcon } from "@phosphor-icons/react";
+import { FormattedMessage, useIntl } from "react-intl";
 import type { DifficultyTier } from "@sudoku-2077/api-types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ComboBadge } from "./ComboBadge.js";
 import { MistakePips } from "./MistakePips.js";
+import { DIFFICULTY_LABEL } from "../../lib/i18n/difficulty.js";
 
 interface HudBarProps {
   elapsedSeconds: number;
@@ -20,6 +22,7 @@ function formatTime(totalSeconds: number): string {
 }
 
 export function HudBar({ elapsedSeconds, mistakeCount, combo, difficulty, onPause }: HudBarProps) {
+  const intl = useIntl();
   return (
     <div className="flex items-center justify-between gap-4 py-3">
       <div className="flex items-center gap-2">
@@ -28,8 +31,15 @@ export function HudBar({ elapsedSeconds, mistakeCount, combo, difficulty, onPaus
       </div>
       <MistakePips count={mistakeCount} />
       <ComboBadge combo={combo} />
-      <Badge variant="outline">{difficulty}</Badge>
-      <Button variant="secondary" size="icon" onClick={onPause} aria-label="Pause">
+      <Badge variant="outline" className="uppercase">
+        <FormattedMessage id={DIFFICULTY_LABEL[difficulty]} />
+      </Badge>
+      <Button
+        variant="secondary"
+        size="icon"
+        onClick={onPause}
+        aria-label={intl.formatMessage({ id: "hudPause" })}
+      >
         <PauseIcon />
       </Button>
     </div>

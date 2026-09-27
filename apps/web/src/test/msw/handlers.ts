@@ -56,7 +56,7 @@ export const handlers = [
 
   // No refresh cookie by default — tests that need a restored session override this with server.use().
   http.post(`${API_BASE_URL}/api/auth/refresh`, () =>
-    HttpResponse.json({ error: "Invalid refresh token" }, { status: 401 })
+    HttpResponse.json({ code: "AUTH_REFRESH_INVALID", error: "Invalid refresh token" }, { status: 401 })
   ),
 
   http.post(`${API_BASE_URL}/api/auth/logout`, () => new HttpResponse(null, { status: 204 })),

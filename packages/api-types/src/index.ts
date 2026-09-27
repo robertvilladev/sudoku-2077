@@ -48,7 +48,25 @@ export const ValidatePuzzleResponseSchema = z.object({
 });
 export type ValidatePuzzleResponse = z.infer<typeof ValidatePuzzleResponseSchema>;
 
+// Stable, machine-readable error codes. Clients translate `code`; `error` stays an English message
+// for developers and logs, so the server never has to know the UI language.
+export const ErrorCodeSchema = z.enum([
+  "VALIDATION_FAILED",
+  "NOT_FOUND",
+  "NO_PUZZLES_AVAILABLE",
+  "NO_DAILY_CHALLENGE",
+  "AUTH_EMAIL_TAKEN",
+  "AUTH_INVALID_CREDENTIALS",
+  "AUTH_REFRESH_INVALID",
+  "UNAUTHORIZED",
+  "RATE_LIMITED",
+  "BAD_REQUEST",
+  "INTERNAL_ERROR",
+]);
+export type ErrorCode = z.infer<typeof ErrorCodeSchema>;
+
 export const ErrorResponseSchema = z.object({
+  code: ErrorCodeSchema,
   error: z.string(),
 });
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;

@@ -13,10 +13,10 @@ describe("apiClient", () => {
     expect(result.date).toBe("2026-01-01");
   });
 
-  it("throws an ApiError carrying the server's message and status on failure", async () => {
+  it("throws an ApiError carrying the server's code, message and status on failure", async () => {
     server.use(
       http.get("http://localhost:3000/api/puzzles/missing", () =>
-        HttpResponse.json({ error: "Puzzle not found" }, { status: 404 })
+        HttpResponse.json({ code: "NOT_FOUND", error: "Puzzle not found" }, { status: 404 })
       )
     );
 
@@ -25,5 +25,6 @@ describe("apiClient", () => {
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).message).toBe("Puzzle not found");
     expect((error as ApiError).status).toBe(404);
+    expect((error as ApiError).code).toBe("NOT_FOUND");
   });
 });

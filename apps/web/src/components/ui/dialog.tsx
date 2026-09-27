@@ -1,4 +1,5 @@
 import * as React from "react";
+import { FormattedMessage } from "react-intl";
 import { cn } from "cn";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
@@ -62,7 +63,9 @@ const DialogContent = React.forwardRef<
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
             <Button variant="ghost" className="absolute top-2 right-2" size="icon">
               <XIcon />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">
+                <FormattedMessage id="actionClose" />
+              </span>
             </Button>
           </DialogPrimitive.Close>
         )}
@@ -95,7 +98,9 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="secondary">Close</Button>
+          <Button variant="secondary">
+            <FormattedMessage id="actionClose" />
+          </Button>
         </DialogPrimitive.Close>
       )}
     </div>

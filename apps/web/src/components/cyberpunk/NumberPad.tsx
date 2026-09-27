@@ -1,5 +1,6 @@
 import { ArrowCounterClockwiseIcon, EraserIcon, PencilSimpleIcon } from "@phosphor-icons/react";
 import { clsx } from "clsx";
+import { FormattedMessage, useIntl } from "react-intl";
 import type { Grid } from "@sudoku-2077/sudoku-core";
 import { Button } from "@/components/ui/button";
 
@@ -12,6 +13,7 @@ interface NumberPadProps {
 
 export function NumberPad({ grid, onDigit }: NumberPadProps) {
   const remaining = DIGITS.map((digit) => 9 - grid.filter((value) => value === digit).length);
+  const intl = useIntl();
 
   return (
     <div className="grid grid-cols-9 gap-1.5 max-[480px]:grid-cols-3">
@@ -19,7 +21,7 @@ export function NumberPad({ grid, onDigit }: NumberPadProps) {
         <button
           key={digit}
           type="button"
-          aria-label={`Enter ${digit}`}
+          aria-label={intl.formatMessage({ id: "padEnterDigit" }, { digit })}
           disabled={remaining[i] <= 0}
           onClick={() => onDigit(digit)}
           className={clsx(
@@ -56,7 +58,7 @@ export function ActionRow({ notesMode, onToggleNotes, onUndo, canUndo, onErase }
         className="flex-1 text-xs"
       >
         <PencilSimpleIcon size={18} />
-        NOTES
+        <FormattedMessage id="actionNotes" />
       </Button>
       <Button
         variant="secondary"
@@ -66,11 +68,11 @@ export function ActionRow({ notesMode, onToggleNotes, onUndo, canUndo, onErase }
         className="flex-1 text-xs"
       >
         <ArrowCounterClockwiseIcon size={18} />
-        UNDO
+        <FormattedMessage id="actionUndo" />
       </Button>
       <Button variant="secondary" size="stack" onClick={onErase} className="flex-1 text-xs">
         <EraserIcon size={18} />
-        ERASE
+        <FormattedMessage id="actionErase" />
       </Button>
     </div>
   );

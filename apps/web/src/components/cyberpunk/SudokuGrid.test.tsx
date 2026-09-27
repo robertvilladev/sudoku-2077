@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { SettingsProvider } from "../../lib/settings/SettingsContext.js";
 import { useBoardState } from "../../features/puzzle/useBoardState.js";
 import { SudokuGrid } from "./SudokuGrid.js";
+import { TestIntlProvider } from "../../test/intl.js";
 
 const givens = `1${"0".repeat(80)}`;
 
@@ -14,9 +15,11 @@ function Harness() {
 
 function renderGrid() {
   return render(
-    <SettingsProvider>
-      <Harness />
-    </SettingsProvider>
+    <TestIntlProvider>
+      <SettingsProvider>
+        <Harness />
+      </SettingsProvider>
+    </TestIntlProvider>
   );
 }
 

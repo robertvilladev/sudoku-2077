@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
 import '../../../domain/sudoku.dart';
+import '../../../l10n/l10n.dart';
 import '../state/board_state.dart';
 
 class SudokuGrid extends StatelessWidget {
@@ -118,9 +119,12 @@ class _SudokuCell extends StatelessWidget {
 
     final row = index ~/ 9 + 1;
     final col = index % 9 + 1;
+    final l10n = context.l10n;
     final label = value == 0
-        ? 'Row $row, column $col, empty'
-        : 'Row $row, column $col, ${isGiven ? 'given' : 'entered'} $value';
+        ? l10n.cellEmpty(row, col)
+        : isGiven
+        ? l10n.cellGiven(row, col, value)
+        : l10n.cellEntered(row, col, value);
 
     return Semantics(
       button: true,

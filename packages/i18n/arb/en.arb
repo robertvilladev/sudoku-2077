@@ -1,0 +1,152 @@
+{
+  "@@locale": "en",
+
+  "titleBootOnline": "System online",
+  "titleBootLoading": "Loading SUDOKU.EXE",
+  "titleBootIntegrity": "Grid integrity: OK",
+  "menuPlay": "Play",
+  "menuDailyChallenge": "Daily challenge",
+  "menuDailyChallengeSoon": "Daily challenge // soon",
+  "@menuDailyChallengeSoon": { "description": "Mobile only: disabled daily challenge button." },
+  "menuLeaderboard": "Leaderboard",
+  "menuSettings": "Settings",
+  "@menuSettings": { "description": "Web only: title-menu entry that opens the settings panel." },
+  "menuOptions": "Options",
+  "@menuOptions": { "description": "Mobile only: title-menu entry that opens the options screen." },
+
+  "difficultySelectTitle": "Select difficulty",
+  "difficultyPrompt": "// choose your clearance level",
+  "difficultyEasy": "Easy",
+  "difficultyMedium": "Medium",
+  "difficultyHard": "Hard",
+  "difficultyHardcore": "Hardcore",
+  "difficultyEasyCodename": "ROOKIE RUN",
+  "@difficultyEasyCodename": { "description": "Brand name. Intentionally untranslated: keep the English text." },
+  "difficultyMediumCodename": "STREET LEVEL",
+  "@difficultyMediumCodename": { "description": "Brand name. Intentionally untranslated: keep the English text." },
+  "difficultyHardCodename": "CORPO GRADE",
+  "@difficultyHardCodename": { "description": "Brand name. Intentionally untranslated: keep the English text." },
+  "difficultyHardcoreCodename": "GHOST PROTOCOL",
+  "@difficultyHardcoreCodename": { "description": "Brand name. Intentionally untranslated: keep the English text." },
+  "difficultyLoading": "Loading {difficulty} puzzle…",
+  "@difficultyLoading": {
+    "description": "Shown while a puzzle of the chosen tier loads. difficulty is a translated tier label.",
+    "placeholders": { "difficulty": { "type": "String" } }
+  },
+  "dailyChallengeTier": "{difficulty} tier",
+  "@dailyChallengeTier": {
+    "placeholders": { "difficulty": { "type": "String" } }
+  },
+
+  "puzzleLoading": "Loading puzzle…",
+  "puzzleNotFound": "Puzzle not found.",
+  "puzzleDecrypting": "Decrypting grid…",
+  "puzzleColdStartHint": "First load can take up to a minute while the server wakes up.",
+  "puzzleConnectionLost": "Connection lost",
+  "puzzleValidateError": "Couldn't verify your solution — check your connection.",
+  "puzzleChecksumFailed": "Grid full, but the checksum failed. Keep hunting.",
+  "puzzleClearedBadge": "PUZZLE_CLEARED",
+  "puzzleClearedTitle": "Grid decrypted",
+  "puzzleFailedBadge": "PUZZLE_FAILED",
+  "puzzleFailedTitle": "Grid corrupted",
+  "puzzlePausedBadge": "SYSTEM_PAUSED",
+  "puzzlePausedTitle": "System paused",
+
+  "statTime": "Time",
+  "statMistakes": "Mistakes",
+  "statMaxCombo": "Max combo",
+  "statCombo": "Combo",
+  "statDifficulty": "Difficulty",
+  "statTier": "Tier",
+  "hudCombo": "Combo ×{combo}",
+  "@hudCombo": {
+    "placeholders": { "combo": { "type": "int" } }
+  },
+  "hudMistakesLabel": "{count} of {max} mistakes used",
+  "@hudMistakesLabel": {
+    "description": "Screen-reader label for the mistake pips.",
+    "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } }
+  },
+  "hudPause": "Pause",
+
+  "actionNotes": "Notes",
+  "actionUndo": "Undo",
+  "actionErase": "Erase",
+  "actionRetry": "Retry",
+  "actionMenu": "Menu",
+  "actionNextPuzzle": "Next puzzle",
+  "actionResume": "Resume",
+  "actionQuitToMenu": "Quit to menu",
+  "actionStay": "Stay",
+  "actionQuit": "Quit",
+  "actionClose": "Close",
+  "actionConfirm": "Confirm",
+
+  "padEnterDigit": "Enter {digit}",
+  "@padEnterDigit": {
+    "placeholders": { "digit": { "type": "int" } }
+  },
+  "padEnterDigitRemaining": "Enter {digit}, {remaining} remaining",
+  "@padEnterDigitRemaining": {
+    "placeholders": { "digit": { "type": "int" }, "remaining": { "type": "int" } }
+  },
+  "cellEmpty": "Row {row}, column {col}, empty",
+  "@cellEmpty": {
+    "placeholders": { "row": { "type": "int" }, "col": { "type": "int" } }
+  },
+  "cellFilled": "Row {row}, column {col}, {value}",
+  "@cellFilled": {
+    "placeholders": { "row": { "type": "int" }, "col": { "type": "int" }, "value": { "type": "int" } }
+  },
+  "cellGiven": "Row {row}, column {col}, given {value}",
+  "@cellGiven": {
+    "placeholders": { "row": { "type": "int" }, "col": { "type": "int" }, "value": { "type": "int" } }
+  },
+  "cellEntered": "Row {row}, column {col}, entered {value}",
+  "@cellEntered": {
+    "placeholders": { "row": { "type": "int" }, "col": { "type": "int" }, "value": { "type": "int" } }
+  },
+  "boardLabel": "Sudoku board",
+
+  "quitConfirmSaved": "Quit to menu? Your progress will be saved — you can resume this puzzle later.",
+  "@quitConfirmSaved": { "description": "Web only: progress is persisted." },
+  "abortRunTitle": "Abort run?",
+  "abortRunBody": "Quit to menu? Progress on this puzzle is not saved yet.",
+  "@abortRunBody": { "description": "Mobile only: progress is not persisted yet." },
+
+  "settingsTitle": "Settings",
+  "settingSound": "Sound FX",
+  "settingScanline": "CRT scanline effect",
+  "settingAutoClearNotes": "Auto-clear notes",
+  "settingHum": "Ambient hum",
+  "settingLanguage": "Language",
+  "settingOn": "On",
+  "settingOff": "Off",
+
+  "languagePickerTitle": "Select language",
+  "languagePickerPrompt": "// choose your interface language",
+  "languagePickerHint": "You can change this later in Options.",
+  "languageBootLine": "Locale module online",
+
+  "profileLoading": "Loading…",
+  "profileLoginPrompt": "Log in to see your profile.",
+  "profileTitle": "Your completions",
+  "profileEmpty": "No completions yet — go solve a puzzle!",
+
+  "authEmail": "Email",
+  "authPassword": "Password",
+  "authLogIn": "Log in",
+  "authSignUp": "Sign up",
+  "authLoginFailed": "Login failed. Check your credentials.",
+  "authSignupFailed": "Signup failed. Try a different email.",
+
+  "errorInvalidCredentials": "Invalid email or password.",
+  "errorEmailTaken": "An account with that email already exists.",
+  "errorValidationFailed": "Some fields are invalid. Check them and try again.",
+  "errorNotFound": "Not found.",
+  "errorNoPuzzles": "No puzzles are available for this tier right now. Try again later.",
+  "errorRateLimited": "Too many requests. Wait a moment and try again.",
+  "errorServer": "The server hit an error. Try again later.",
+  "errorNetwork": "Can't reach the server. Check your connection.",
+  "errorGeneric": "Something went wrong. Try again."
+}

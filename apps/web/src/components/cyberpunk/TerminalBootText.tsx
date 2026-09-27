@@ -4,7 +4,7 @@ interface TerminalBootTextProps {
 
 export function TerminalBootText({ lines }: TerminalBootTextProps) {
   return (
-    <div className="font-mono text-[11px] leading-relaxed text-neutral-600">
+    <div className="font-mono text-[11px] leading-relaxed text-neutral-600 uppercase">
       {lines.map((line, index) => (
         <div key={index}>
           {"> ".repeat(index === 0 ? 2 : 1)}
