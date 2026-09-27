@@ -231,6 +231,8 @@ Makes both clients feel like the same game, and makes the board react more while
   - Sounds: place, error, notes toggle and win, plus the unit-complete chirp above. Web synthesizes SFX live with Web Audio. Flutter has no equivalent, so render the web synth patches to short audio assets and play them with a low-latency player (e.g. `audioplayers`/`soloud`), keeping the sound identical across clients.
   - Haptics (`HapticFeedback`) on mistake, unit complete and win: a mobile-only extra.
   - Settings: a pause-menu settings panel (sound, effects, haptics, auto-clear notes, ambient hum), persisted with `shared_preferences`, mirroring web's `SettingsContext`.
+- [x] **Mobile screen design pass.** Every mobile screen (splash, language, title, options, difficulty, loading, board, overlays) mocked in the design lab artifact with the lab's tokens and the app's real copy. Spec: `docs/superpowers/specs/2026-09-27-mobile-screens-design.md`. The Options screen above is the full settings home; the pause card links to it.
+- [ ] **Day mode (mobile first).** A light theme with the same colour roles, ink instead of glow, yellow only as a fill. Options → Appearance: Night (default) / Day / System. Build it in the Theme parity PR by turning `Palette` into a `ThemeExtension`. Tokens in the spec above.
 
 ---
 
