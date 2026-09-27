@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sudoku2077/app.dart';
+import 'package:sudoku2077/core/appearance_controller.dart';
 import 'package:sudoku2077/core/config.dart';
 import 'package:sudoku2077/core/locale_controller.dart';
 import 'package:sudoku2077/features/puzzle/data/api_client.dart';
@@ -13,12 +14,14 @@ Future<Widget> app({
   Map<String, Object> prefs = const {'languageChosen': true},
 }) async {
   SharedPreferences.setMockInitialValues(prefs);
+  final shared = await SharedPreferences.getInstance();
   return SudokuApp(
     apiClient: ApiClient(
       httpClient: mockHttpClient(latency: const Duration(milliseconds: 100)),
       baseUrl: 'http://mock.local',
     ),
-    localeController: LocaleController(await SharedPreferences.getInstance()),
+    localeController: LocaleController(shared),
+    appearanceController: AppearanceController(shared),
   );
 }
 
@@ -152,5 +155,40 @@ void main() {
     await tester.binding.handlePopRoute(); // Android system back
     await tester.pumpAndSettle();
     expect(find.text('JOUER'), findsOneWidget);
+  });
+
+  testWidgets('the pause card offers OPTIONS, which opens the options screen', (
+    tester,
+  ) async {
+    await openBoard(tester, 'EASY');
+    await tester.tap(find.byTooltip('Pause'));
+    await tester.pumpAndSettle();
+    expect(find.text('SYSTEM PAUSED'), findsOneWidget);
+
+    await tester.tap(find.text('OPTIONS'));
+    await tester.pumpAndSettle();
+    expect(find.text('APPEARANCE'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('SYSTEM PAUSED'), findsOneWidget);
+  });
+
+  testWidgets('Options → DAY switches the theme and is remembered', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(await app());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('OPTIONS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('DAY'));
+    await tester.pumpAndSettle();
+
+    final theme = Theme.of(tester.element(find.text('APPEARANCE')));
+    expect(theme.brightness, Brightness.light);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('appearance'), 'day');
   });
 }

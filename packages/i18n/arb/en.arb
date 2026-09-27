@@ -120,6 +120,10 @@
   "settingAutoClearNotes": "Auto-clear notes",
   "settingHum": "Ambient hum",
   "settingLanguage": "Language",
+  "settingAppearance": "Appearance",
+  "settingThemeNight": "Night",
+  "settingThemeDay": "Day",
+  "settingThemeSystem": "System",
   "settingOn": "On",
   "settingOff": "Off",
 

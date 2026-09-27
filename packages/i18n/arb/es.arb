@@ -79,6 +79,10 @@
   "settingAutoClearNotes": "Borrar notas automáticamente",
   "settingHum": "Zumbido ambiental",
   "settingLanguage": "Idioma",
+  "settingAppearance": "Apariencia",
+  "settingThemeNight": "Noche",
+  "settingThemeDay": "Día",
+  "settingThemeSystem": "Sistema",
   "settingOn": "Sí",
   "settingOff": "No",
 

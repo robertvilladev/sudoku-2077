@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme.dart';
 import '../../l10n/l10n.dart';
+import 'boot_text.dart';
 import 'difficulty_screen.dart';
 import 'language_screen.dart';
+import 'wordmark.dart';
 
 class TitleScreen extends StatelessWidget {
   const TitleScreen({super.key});
@@ -14,8 +15,8 @@ class TitleScreen extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            padding: const EdgeInsetsDirectional.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 320),
               child: Column(
@@ -23,41 +24,16 @@ class TitleScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: 12,
                 children: [
-                  Text(
-                    [
+                  BootText(
+                    lines: [
                       l10n.titleBootOnline,
                       l10n.titleBootLoading,
                       l10n.titleBootIntegrity,
-                    ].map((line) => '> $line').join('\n').toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Palette.neutral500,
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  const FittedBox(
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(text: 'SUDOKU'),
-                          TextSpan(
-                            text: '//',
-                            style: TextStyle(color: Palette.accent),
-                          ),
-                          TextSpan(text: '2077'),
-                        ],
-                      ),
-                      style: TextStyle(
-                        fontSize: 44,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  const Wordmark(),
+                  const SizedBox(height: 18),
                   FilledButton(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                    ),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const DifficultyScreen(),

@@ -55,7 +55,7 @@ pure Dart. Directories are added when a task needs them.
 ```
 lib/
   main.dart, app.dart          # entrypoint; provides ApiClient to the tree
-  core/                        # config (API_BASE_URL, USE_MOCK_API), theme
+  core/                        # config (API_BASE_URL, USE_MOCK_API), theme (Night/Day palette), appearance + locale
   domain/sudoku.dart           # peersOf, parseGrid, Difficulty — pure Dart
   features/menu/               # title + difficulty screens
   features/puzzle/data/        # ApiClient (talks to apps/api), DTOs, mock backend
