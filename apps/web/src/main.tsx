@@ -7,6 +7,7 @@ import { App } from "./App.js";
 import { queryClient } from "./lib/queryClient.js";
 import { AuthProvider } from "./lib/auth/AuthContext.js";
 import { SettingsProvider } from "./lib/settings/SettingsContext.js";
+import { I18nProvider } from "./lib/i18n/I18nProvider.js";
 import "./index.css";
 
 const container = document.getElementById("root");
@@ -19,11 +20,13 @@ createRoot(container).render(
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
         <SettingsProvider>
-          <AuthProvider>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
-          </AuthProvider>
+          <I18nProvider>
+            <AuthProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </AuthProvider>
+          </I18nProvider>
         </SettingsProvider>
       </MotionConfig>
     </QueryClientProvider>

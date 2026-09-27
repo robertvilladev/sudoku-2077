@@ -53,7 +53,7 @@ http.Client mockHttpClient({
       });
     }
 
-    return _json({'error': 'Not found'}, status: 404);
+    return _json({'code': 'NOT_FOUND', 'error': 'Not found'}, status: 404);
   });
 }
 

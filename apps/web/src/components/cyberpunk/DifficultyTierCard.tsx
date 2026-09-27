@@ -1,12 +1,7 @@
 import { clsx } from "clsx";
+import { FormattedMessage } from "react-intl";
 import type { DifficultyTier } from "@sudoku-2077/api-types";
-
-const FLAVOR: Record<DifficultyTier, string> = {
-  EASY: "ROOKIE RUN",
-  MEDIUM: "STREET LEVEL",
-  HARD: "CORPO GRADE",
-  HARDCORE: "GHOST PROTOCOL",
-};
+import { DIFFICULTY_CODENAME, DIFFICULTY_LABEL } from "../../lib/i18n/difficulty.js";
 
 interface DifficultyTierCardProps {
   difficulty: DifficultyTier;
@@ -25,9 +20,11 @@ export function DifficultyTierCard({ difficulty, isSelected, onSelect }: Difficu
         isSelected ? "glow-card-selected" : "shadow-sm hover:shadow-md"
       )}
     >
-      <span className="font-mono text-lg font-semibold">{difficulty}</span>
+      <span className="font-mono text-lg font-semibold uppercase">
+        <FormattedMessage id={DIFFICULTY_LABEL[difficulty]} />
+      </span>
       <span aria-hidden="true" className="font-mono text-[11px] tracking-wide text-accent-300">
-        {FLAVOR[difficulty]}
+        <FormattedMessage id={DIFFICULTY_CODENAME[difficulty]} />
       </span>
     </button>
   );

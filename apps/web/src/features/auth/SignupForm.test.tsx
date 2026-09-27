@@ -7,28 +7,31 @@ import { describe, expect, it } from "vitest";
 import { AuthProvider } from "../../lib/auth/AuthContext.js";
 import { server } from "../../test/msw/server.js";
 import { SignupForm } from "./SignupForm.js";
+import { TestIntlProvider } from "../../test/intl.js";
 
 function renderSignupForm() {
   const queryClient = new QueryClient();
   return render(
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <MemoryRouter initialEntries={["/signup"]}>
-          <Routes>
-            <Route path="/signup" element={<SignupForm />} />
-            <Route path="/profile" element={<p>profile</p>} />
-          </Routes>
-        </MemoryRouter>
-      </AuthProvider>
-    </QueryClientProvider>
+    <TestIntlProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <MemoryRouter initialEntries={["/signup"]}>
+            <Routes>
+              <Route path="/signup" element={<SignupForm />} />
+              <Route path="/profile" element={<p>profile</p>} />
+            </Routes>
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryClientProvider>
+    </TestIntlProvider>
   );
 }
 
 describe("SignupForm", () => {
-  it("shows the server's error message when signup fails", async () => {
+  it("translates the server's error code when signup fails", async () => {
     server.use(
       http.post("http://localhost:3000/api/auth/signup", () =>
-        HttpResponse.json({ error: "Email already registered" }, { status: 409 })
+        HttpResponse.json({ code: "AUTH_EMAIL_TAKEN", error: "Email already registered" }, { status: 409 })
       )
     );
 
@@ -38,6 +41,26 @@ describe("SignupForm", () => {
     await userEvent.type(screen.getByLabelText(/password/i), "hunter2222");
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
 
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Email already registered"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("An account with that email already exists.")
+    );
+  });
+
+  it("falls back to a generic message when the error has no known code", async () => {
+    server.use(
+      http.post("http://localhost:3000/api/auth/signup", () =>
+        HttpResponse.json({ oops: true }, { status: 502 })
+      )
+    );
+
+    renderSignupForm();
+
+    await userEvent.type(screen.getByLabelText(/email/i), "taken@example.com");
+    await userEvent.type(screen.getByLabelText(/password/i), "hunter2222");
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("Signup failed. Try a different email.")
+    );
   });
 });

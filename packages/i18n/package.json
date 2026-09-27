@@ -1,0 +1,16 @@
+{
+  "name": "@sudoku-2077/i18n",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*.json": "./dist/*.json"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@formatjs/icu-messageformat-parser": "^2.11.2"
+  }
+}

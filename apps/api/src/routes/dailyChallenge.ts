@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { DailyChallengeResponse } from "@sudoku-2077/api-types";
 import { prisma } from "../db/client.js";
+import { errorBody } from "../errors.js";
 import { toPublicPuzzle } from "../mappers.js";
 
 function todayUtc(): Date {
@@ -18,7 +19,10 @@ export async function dailyChallengeRoutes(app: FastifyInstance) {
 
     if (!daily) {
       reply.code(404);
-      return { error: "No daily challenge is assigned for today yet. Run the replenish job." };
+      return errorBody(
+        "NO_DAILY_CHALLENGE",
+        "No daily challenge is assigned for today yet. Run the replenish job."
+      );
     }
 
     const response: DailyChallengeResponse = {

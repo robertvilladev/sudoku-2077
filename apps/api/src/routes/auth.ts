@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { LoginRequestSchema, SignupRequestSchema } from "@sudoku-2077/api-types";
 import type { AuthResponse } from "@sudoku-2077/api-types";
 import { prisma } from "../db/client.js";
+import { errorBody } from "../errors.js";
 import { env } from "../config/env.js";
 import { generateRefreshToken, hashRefreshToken } from "../lib/refreshToken.js";
 
@@ -44,13 +45,13 @@ export async function authRoutes(app: FastifyInstance) {
     const parsed = SignupRequestSchema.safeParse(request.body);
     if (!parsed.success) {
       reply.code(400);
-      return { error: "Body must be { email, password (min 8 chars) }" };
+      return errorBody("VALIDATION_FAILED", "Body must be { email, password (min 8 chars) }");
     }
 
     const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
     if (existing) {
       reply.code(409);
-      return { error: "An account with that email already exists" };
+      return errorBody("AUTH_EMAIL_TAKEN", "An account with that email already exists");
     }
 
     const passwordHash = await bcrypt.hash(parsed.data.password, BCRYPT_ROUNDS);
@@ -65,14 +66,14 @@ export async function authRoutes(app: FastifyInstance) {
     const parsed = LoginRequestSchema.safeParse(request.body);
     if (!parsed.success) {
       reply.code(400);
-      return { error: "Body must be { email, password }" };
+      return errorBody("VALIDATION_FAILED", "Body must be { email, password }");
     }
 
     const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
     const passwordMatches = user ? await bcrypt.compare(parsed.data.password, user.passwordHash) : false;
     if (!user || !passwordMatches) {
       reply.code(401);
-      return { error: "Invalid email or password" };
+      return errorBody("AUTH_INVALID_CREDENTIALS", "Invalid email or password");
     }
 
     return issueTokens(app, reply, user);
@@ -82,20 +83,20 @@ export async function authRoutes(app: FastifyInstance) {
     const cookieToken = request.cookies[REFRESH_COOKIE_NAME];
     if (!cookieToken) {
       reply.code(401);
-      return { error: "Missing refresh token" };
+      return errorBody("AUTH_REFRESH_INVALID", "Missing refresh token");
     }
 
     const tokenHash = hashRefreshToken(cookieToken);
     const stored = await prisma.refreshToken.findFirst({ where: { tokenHash } });
     if (!stored || stored.revoked || stored.expiresAt < new Date()) {
       reply.code(401);
-      return { error: "Invalid or expired refresh token" };
+      return errorBody("AUTH_REFRESH_INVALID", "Invalid or expired refresh token");
     }
 
     const user = await prisma.user.findUnique({ where: { id: stored.userId } });
     if (!user) {
       reply.code(401);
-      return { error: "Invalid or expired refresh token" };
+      return errorBody("AUTH_REFRESH_INVALID", "Invalid or expired refresh token");
     }
 
     await prisma.refreshToken.update({ where: { id: stored.id }, data: { revoked: true } });

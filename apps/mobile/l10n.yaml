@@ -1,0 +1,6 @@
+# The catalog is shared with apps/web; see packages/i18n.
+arb-dir: ../../packages/i18n/arb
+template-arb-file: en.arb
+output-dir: lib/l10n/gen
+output-localization-file: app_localizations.dart
+nullable-getter: false

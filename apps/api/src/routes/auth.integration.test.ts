@@ -23,7 +23,11 @@ function cookieValue(setCookieHeader: string | string[] | undefined, name: strin
 describe("POST /api/auth/signup", () => {
   it("creates a user and returns an access token + refresh cookie", async () => {
     const app = await buildApp();
-    const response = await app.inject({ method: "POST", url: "/api/auth/signup", payload: { email, password } });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/auth/signup",
+      payload: { email, password },
+    });
     expect(response.statusCode).toBe(200);
     const body = response.json();
     expect(body.accessToken).toEqual(expect.any(String));
@@ -34,8 +38,13 @@ describe("POST /api/auth/signup", () => {
   it("rejects a duplicate email with 409", async () => {
     const app = await buildApp();
     await app.inject({ method: "POST", url: "/api/auth/signup", payload: { email, password } });
-    const response = await app.inject({ method: "POST", url: "/api/auth/signup", payload: { email, password } });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/auth/signup",
+      payload: { email, password },
+    });
     expect(response.statusCode).toBe(409);
+    expect(response.json().code).toBe("AUTH_EMAIL_TAKEN");
   });
 
   it("rejects a short password with 400", async () => {
@@ -46,6 +55,7 @@ describe("POST /api/auth/signup", () => {
       payload: { email: `short-${randomUUID()}@example.com`, password: "short" },
     });
     expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("VALIDATION_FAILED");
   });
 });
 
@@ -53,7 +63,11 @@ describe("POST /api/auth/login", () => {
   it("logs in with correct credentials", async () => {
     const app = await buildApp();
     await app.inject({ method: "POST", url: "/api/auth/signup", payload: { email, password } });
-    const response = await app.inject({ method: "POST", url: "/api/auth/login", payload: { email, password } });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { email, password },
+    });
     expect(response.statusCode).toBe(200);
     expect(response.json().accessToken).toEqual(expect.any(String));
   });
@@ -67,6 +81,7 @@ describe("POST /api/auth/login", () => {
       payload: { email, password: "wrong-password" },
     });
     expect(response.statusCode).toBe(401);
+    expect(response.json().code).toBe("AUTH_INVALID_CREDENTIALS");
   });
 
   it("rejects an unknown email with the same generic 401", async () => {
@@ -83,7 +98,11 @@ describe("POST /api/auth/login", () => {
 describe("POST /api/auth/refresh", () => {
   it("rotates the refresh token and issues a new access token", async () => {
     const app = await buildApp();
-    const signup = await app.inject({ method: "POST", url: "/api/auth/signup", payload: { email, password } });
+    const signup = await app.inject({
+      method: "POST",
+      url: "/api/auth/signup",
+      payload: { email, password },
+    });
     const oldCookie = cookieValue(signup.headers["set-cookie"], "refreshToken")!;
 
     const refresh = await app.inject({
@@ -110,13 +129,18 @@ describe("POST /api/auth/refresh", () => {
     const app = await buildApp();
     const response = await app.inject({ method: "POST", url: "/api/auth/refresh" });
     expect(response.statusCode).toBe(401);
+    expect(response.json().code).toBe("AUTH_REFRESH_INVALID");
   });
 });
 
 describe("POST /api/auth/logout", () => {
   it("revokes the refresh token and clears the cookie", async () => {
     const app = await buildApp();
-    const signup = await app.inject({ method: "POST", url: "/api/auth/signup", payload: { email, password } });
+    const signup = await app.inject({
+      method: "POST",
+      url: "/api/auth/signup",
+      payload: { email, password },
+    });
     const accessToken = signup.json().accessToken;
     const refreshCookie = cookieValue(signup.headers["set-cookie"], "refreshToken")!;
 

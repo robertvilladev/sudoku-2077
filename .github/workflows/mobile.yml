@@ -1,13 +1,13 @@
 name: Mobile
 
 # apps/mobile is not an npm workspace, so ci.yml never touches it. Path-filtered so API/web-only PRs
-# don't pay for the Flutter SDK setup.
+# don't pay for the Flutter SDK setup. packages/i18n is included because gen-l10n reads its ARB files.
 on:
   push:
     branches: [main]
-    paths: ["apps/mobile/**", ".github/workflows/mobile.yml"]
+    paths: ["apps/mobile/**", "packages/i18n/**", ".github/workflows/mobile.yml"]
   pull_request:
-    paths: ["apps/mobile/**", ".github/workflows/mobile.yml"]
+    paths: ["apps/mobile/**", "packages/i18n/**", ".github/workflows/mobile.yml"]
 
 concurrency:
   group: mobile-${{ github.ref }}
@@ -30,3 +30,5 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
       - run: flutter test
+      # shared_preferences is a native plugin: catch Gradle/plugin breakage here, not on a dev machine.
+      - run: flutter build apk --debug

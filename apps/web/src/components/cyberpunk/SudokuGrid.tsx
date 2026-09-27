@@ -1,4 +1,5 @@
 import { useCallback, useMemo, type KeyboardEvent } from "react";
+import { useIntl } from "react-intl";
 import { peersOf } from "@sudoku-2077/sudoku-core";
 import type { UseBoardStateResult } from "../../features/puzzle/useBoardState.js";
 import { CornerBrackets } from "./CornerBrackets.js";
@@ -16,6 +17,7 @@ function borderFor(line: number): "none" | "thin" | "thick" {
 export function SudokuGrid({ board }: SudokuGridProps) {
   const { grid, givenMask, conflicts, notes, selectedIndex, selectCell, setCell, toggleNote, notesMode } =
     board;
+  const intl = useIntl();
 
   const peerSet = useMemo(
     () => (selectedIndex === null ? new Set<number>() : new Set(peersOf(selectedIndex))),
@@ -66,7 +68,7 @@ export function SudokuGrid({ board }: SudokuGridProps) {
   return (
     <div
       role="grid"
-      aria-label="Sudoku board"
+      aria-label={intl.formatMessage({ id: "boardLabel" })}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       className="relative mx-auto aspect-square w-full max-w-[560px] rounded-sm border border-accent glow-grid-frame outline-none"

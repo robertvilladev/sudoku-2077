@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import '../../l10n/l10n.dart';
 import 'difficulty_screen.dart';
+import 'language_screen.dart';
 
 class TitleScreen extends StatelessWidget {
   const TitleScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -20,9 +23,16 @@ class TitleScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: 12,
                 children: [
-                  const Text(
-                    '> SYSTEM ONLINE\n> LOADING SUDOKU.EXE\n> GRID INTEGRITY: OK',
-                    style: TextStyle(fontSize: 11, color: Palette.neutral500),
+                  Text(
+                    [
+                      l10n.titleBootOnline,
+                      l10n.titleBootLoading,
+                      l10n.titleBootIntegrity,
+                    ].map((line) => '> $line').join('\n').toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Palette.neutral500,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   const FittedBox(
@@ -53,11 +63,19 @@ class TitleScreen extends StatelessWidget {
                         builder: (_) => const DifficultyScreen(),
                       ),
                     ),
-                    child: const Text('PLAY'),
+                    child: Text(l10n.menuPlay.toUpperCase()),
                   ),
-                  const OutlinedButton(
+                  OutlinedButton(
                     onPressed: null,
-                    child: Text('DAILY CHALLENGE // SOON'),
+                    child: Text(l10n.menuDailyChallengeSoon.toUpperCase()),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const OptionsScreen(),
+                      ),
+                    ),
+                    child: Text(l10n.menuOptions.toUpperCase()),
                   ),
                 ],
               ),

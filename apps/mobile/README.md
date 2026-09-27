@@ -43,6 +43,10 @@ flutter analyze
 flutter test
 ```
 
+Copy comes from `packages/i18n/arb` through `flutter gen-l10n` (see `l10n.yaml`). The generated
+`lib/l10n/gen/` is git-ignored. After editing an ARB file, run `flutter gen-l10n` (or
+`flutter pub get`) so the Dart getters match.
+
 ## Layout
 
 Feature-first; dependency direction `ui → state → data`, `core/` is importable by everyone, `domain/` is

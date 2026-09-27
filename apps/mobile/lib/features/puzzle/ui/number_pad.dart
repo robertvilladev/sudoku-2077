@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
+import '../../../l10n/l10n.dart';
 import '../state/board_state.dart';
 
 class NumberPad extends StatelessWidget {
@@ -45,7 +46,7 @@ class _DigitButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: 'Enter $digit, $remaining remaining',
+      label: context.l10n.padEnterDigitRemaining(digit, remaining),
       excludeSemantics: true,
       child: Opacity(
         opacity: enabled ? 1 : 0.45,
@@ -91,13 +92,14 @@ class ActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final board = context.watch<BoardState>();
     final active = !board.isGameOver;
+    final l10n = context.l10n;
     return Row(
       spacing: 8,
       children: [
         Expanded(
           child: _ActionButton(
             icon: Icons.edit_outlined,
-            label: 'NOTES',
+            label: l10n.actionNotes.toUpperCase(),
             highlighted: board.notesMode,
             onPressed: board.toggleNotesMode,
           ),
@@ -105,14 +107,14 @@ class ActionRow extends StatelessWidget {
         Expanded(
           child: _ActionButton(
             icon: Icons.undo,
-            label: 'UNDO',
+            label: l10n.actionUndo.toUpperCase(),
             onPressed: active && board.canUndo ? board.undo : null,
           ),
         ),
         Expanded(
           child: _ActionButton(
             icon: Icons.backspace_outlined,
-            label: 'ERASE',
+            label: l10n.actionErase.toUpperCase(),
             onPressed: active ? board.eraseSelected : null,
           ),
         ),

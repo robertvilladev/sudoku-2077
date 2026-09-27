@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { AuthProvider, useAuth } from "../../lib/auth/AuthContext.js";
 import { LoginForm } from "./LoginForm.js";
+import { TestIntlProvider } from "../../test/intl.js";
 
 function ProfileStub() {
   const { accessToken } = useAuth();
@@ -14,16 +15,18 @@ function ProfileStub() {
 function renderLoginForm() {
   const queryClient = new QueryClient();
   return render(
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <MemoryRouter initialEntries={["/login"]}>
-          <Routes>
-            <Route path="/login" element={<LoginForm />} />
-            <Route path="/profile" element={<ProfileStub />} />
-          </Routes>
-        </MemoryRouter>
-      </AuthProvider>
-    </QueryClientProvider>
+    <TestIntlProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <MemoryRouter initialEntries={["/login"]}>
+            <Routes>
+              <Route path="/login" element={<LoginForm />} />
+              <Route path="/profile" element={<ProfileStub />} />
+            </Routes>
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryClientProvider>
+    </TestIntlProvider>
   );
 }
 

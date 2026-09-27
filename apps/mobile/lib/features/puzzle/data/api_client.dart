@@ -7,10 +7,14 @@ import '../../../domain/sudoku.dart';
 import 'puzzle_dto.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.message, {this.statusCode});
+  const ApiException(this.message, {this.statusCode, this.code});
 
+  /// English developer text; show [code]-based catalog copy to players instead.
   final String message;
   final int? statusCode;
+
+  /// Stable `ErrorCode` from `@sudoku-2077/api-types`, when the server sent one.
+  final String? code;
 
   @override
   String toString() => 'ApiException($statusCode): $message';
@@ -90,7 +94,13 @@ class ApiClient {
       final error = body is Map && body['error'] is String
           ? body['error'] as String
           : 'Request failed';
-      throw ApiException(error, statusCode: response.statusCode);
+      throw ApiException(
+        error,
+        statusCode: response.statusCode,
+        code: body is Map && body['code'] is String
+            ? body['code'] as String
+            : null,
+      );
     }
     return body;
   }

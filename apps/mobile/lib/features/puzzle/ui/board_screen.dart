@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
 import '../../../domain/sudoku.dart';
+import '../../../l10n/l10n.dart';
 import '../data/api_client.dart';
 import '../data/puzzle_dto.dart';
 import '../state/board_state.dart';
@@ -23,7 +24,7 @@ class BoardScreen extends StatefulWidget {
 class _BoardScreenState extends State<BoardScreen> {
   PublicPuzzle? _puzzle;
   BoardState? _board;
-  String? _loadError;
+  Object? _loadError;
 
   Timer? _ticker;
   int _elapsedSeconds = 0;
@@ -32,7 +33,7 @@ class _BoardScreenState extends State<BoardScreen> {
   String? _validatedBoard;
   bool _validating = false;
   ValidatePuzzleResponse? _validateResult;
-  String? _validateError;
+  bool _validateFailed = false;
 
   bool get _isWon =>
       _validateResult != null &&
@@ -73,11 +74,9 @@ class _BoardScreenState extends State<BoardScreen> {
         setState(() => _elapsedSeconds++);
       });
     } on ApiException catch (e) {
-      if (mounted) setState(() => _loadError = e.message);
+      if (mounted) setState(() => _loadError = e);
     } on FormatException catch (e) {
-      if (mounted) {
-        setState(() => _loadError = 'Bad server response: ${e.message}');
-      }
+      if (mounted) setState(() => _loadError = e);
     }
   }
 
@@ -96,7 +95,7 @@ class _BoardScreenState extends State<BoardScreen> {
     setState(() {
       _validatedBoard = board.boardString;
       _validating = true;
-      _validateError = null;
+      _validateFailed = false;
     });
     try {
       final result = await context.read<ApiClient>().validate(
@@ -110,12 +109,7 @@ class _BoardScreenState extends State<BoardScreen> {
       );
       if (mounted) setState(() => _validateResult = result);
     } on ApiException {
-      if (mounted) {
-        setState(
-          () => _validateError =
-              "Couldn't verify your solution — check your connection.",
-        );
-      }
+      if (mounted) setState(() => _validateFailed = true);
     } finally {
       if (mounted) setState(() => _validating = false);
     }
@@ -125,18 +119,16 @@ class _BoardScreenState extends State<BoardScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('ABORT RUN?'),
-        content: const Text(
-          'Quit to menu? Progress on this puzzle is not saved yet.',
-        ),
+        title: Text(context.l10n.abortRunTitle.toUpperCase()),
+        content: Text(context.l10n.abortRunBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('STAY'),
+            child: Text(context.l10n.actionStay.toUpperCase()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('QUIT'),
+            child: Text(context.l10n.actionQuit.toUpperCase()),
           ),
         ],
       ),
@@ -166,29 +158,42 @@ class _BoardScreenState extends State<BoardScreen> {
 
   Widget _buildBody() {
     final board = _board;
+    final l10n = context.l10n;
     if (_loadError != null) {
       return _Centered(
         children: [
-          const Text('CONNECTION LOST', style: TextStyle(fontSize: 20)),
           Text(
-            _loadError!,
+            l10n.puzzleConnectionLost.toUpperCase(),
+            style: const TextStyle(fontSize: 20),
+          ),
+          Text(
+            loadErrorMessage(l10n, _loadError!),
             textAlign: TextAlign.center,
             style: const TextStyle(color: Palette.neutral500),
           ),
-          FilledButton(onPressed: _load, child: const Text('RETRY')),
-          TextButton(onPressed: _toMenu, child: const Text('MENU')),
+          FilledButton(
+            onPressed: _load,
+            child: Text(l10n.actionRetry.toUpperCase()),
+          ),
+          TextButton(
+            onPressed: _toMenu,
+            child: Text(l10n.actionMenu.toUpperCase()),
+          ),
         ],
       );
     }
     if (board == null) {
-      return const _Centered(
+      return _Centered(
         children: [
-          CircularProgressIndicator(),
-          Text('DECRYPTING GRID…', style: TextStyle(fontSize: 18)),
+          const CircularProgressIndicator(),
           Text(
-            'First load can take up to a minute while the server wakes up.',
+            l10n.puzzleDecrypting.toUpperCase(),
+            style: const TextStyle(fontSize: 18),
+          ),
+          Text(
+            l10n.puzzleColdStartHint,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Palette.neutral500, fontSize: 12),
+            style: const TextStyle(color: Palette.neutral500, fontSize: 12),
           ),
         ],
       );
@@ -219,16 +224,14 @@ class _BoardScreenState extends State<BoardScreen> {
                           combo: board.combo,
                           onPause: () => setState(() => _paused = true),
                         ),
-                        if (_validateError != null)
+                        if (_validateFailed)
                           _Banner(
-                            message: _validateError!,
-                            actionLabel: 'RETRY',
+                            message: l10n.puzzleValidateError,
+                            actionLabel: l10n.actionRetry.toUpperCase(),
                             onAction: _validate,
                           ),
                         if (showIncorrect)
-                          const _Banner(
-                            message: 'Grid full, but the checksum failed. Keep hunting.',
-                          ),
+                          _Banner(message: l10n.puzzleChecksumFailed),
                         const SudokuGrid(),
                         const NumberPad(),
                         const ActionRow(),
@@ -239,42 +242,45 @@ class _BoardScreenState extends State<BoardScreen> {
               ),
               if (_isWon)
                 _OverlayCard(
-                  badge: 'PUZZLE_CLEARED',
-                  title: 'GRID DECRYPTED',
+                  badge: l10n.puzzleClearedBadge,
+                  title: l10n.puzzleClearedTitle.toUpperCase(),
                   titleColor: Palette.win,
                   stats: {
-                    'TIME': formatTime(_elapsedSeconds),
-                    'MISTAKES': '${board.mistakeCount}',
-                    'MAX COMBO': '×${board.maxCombo}',
+                    l10n.statTime: formatTime(_elapsedSeconds),
+                    l10n.statMistakes: '${board.mistakeCount}',
+                    l10n.statMaxCombo: '×${board.maxCombo}',
                   },
-                  secondary: ('MENU', _toMenu),
-                  primary: ('NEXT PUZZLE', _nextPuzzle),
+                  secondary: (l10n.actionMenu, _toMenu),
+                  primary: (l10n.actionNextPuzzle, _nextPuzzle),
                 )
               else if (board.isGameOver)
                 _OverlayCard(
-                  badge: 'PUZZLE_FAILED',
-                  title: 'GRID CORRUPTED',
+                  badge: l10n.puzzleFailedBadge,
+                  title: l10n.puzzleFailedTitle.toUpperCase(),
                   titleColor: Palette.error,
                   stats: {
-                    'TIME': formatTime(_elapsedSeconds),
-                    'DIFFICULTY': widget.difficulty.wireName,
+                    l10n.statTime: formatTime(_elapsedSeconds),
+                    l10n.statDifficulty: widget.difficulty.label(l10n),
                   },
-                  secondary: ('MENU', _toMenu),
-                  primary: ('RETRY', _nextPuzzle),
+                  secondary: (l10n.actionMenu, _toMenu),
+                  primary: (l10n.actionRetry, _nextPuzzle),
                 )
               else if (_paused)
                 _OverlayCard(
-                  badge: 'SYSTEM_PAUSED',
-                  title: 'SYSTEM PAUSED',
+                  badge: l10n.puzzlePausedBadge,
+                  title: l10n.puzzlePausedTitle.toUpperCase(),
                   titleColor: Palette.text,
-                  stats: {'TIME': formatTime(_elapsedSeconds)},
+                  stats: {l10n.statTime: formatTime(_elapsedSeconds)},
                   secondary: (
-                    'QUIT TO MENU',
+                    l10n.actionQuitToMenu,
                     () async {
                       if (await _confirmQuit()) _toMenu();
                     },
                   ),
-                  primary: ('RESUME', () => setState(() => _paused = false)),
+                  primary: (
+                    l10n.actionResume,
+                    () => setState(() => _paused = false),
+                  ),
                 ),
             ],
           );
@@ -282,6 +288,20 @@ class _BoardScreenState extends State<BoardScreen> {
       ),
     );
   }
+}
+
+/// Maps a load failure to catalog copy. The server's `error` text is English developer copy, so
+/// only its stable `code` is used.
+String loadErrorMessage(AppLocalizations l10n, Object error) {
+  if (error is! ApiException) return l10n.errorGeneric;
+  if (error.statusCode == null) return l10n.errorNetwork;
+  return switch (error.code) {
+    'NO_PUZZLES_AVAILABLE' => l10n.errorNoPuzzles,
+    'NOT_FOUND' => l10n.errorNotFound,
+    'RATE_LIMITED' => l10n.errorRateLimited,
+    'INTERNAL_ERROR' => l10n.errorServer,
+    _ => l10n.errorGeneric,
+  };
 }
 
 String formatTime(int totalSeconds) {
@@ -307,11 +327,12 @@ class _Hud extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     const label = TextStyle(fontSize: 10, color: Palette.neutral500);
     Widget stat(String name, String value, {Color? color}) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(name, style: label),
+        Text(name.toUpperCase(), style: label),
         Text(
           value,
           style: TextStyle(
@@ -326,19 +347,25 @@ class _Hud extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: stat('TIER', difficulty.wireName, color: Palette.accent300),
+          child: stat(
+            l10n.statTier,
+            difficulty.label(l10n).toUpperCase(),
+            color: Palette.accent300,
+          ),
         ),
-        Expanded(child: stat('TIME', formatTime(elapsedSeconds))),
+        Expanded(child: stat(l10n.statTime, formatTime(elapsedSeconds))),
         Expanded(
           child: stat(
-            'MISTAKES',
+            l10n.statMistakes,
             '$mistakeCount/$maxMistakes',
             color: mistakeCount > 0 ? Palette.error : null,
           ),
         ),
-        Expanded(child: stat('COMBO', '×$combo', color: Palette.accent300)),
+        Expanded(
+          child: stat(l10n.statCombo, '×$combo', color: Palette.accent300),
+        ),
         IconButton(
-          tooltip: 'Pause',
+          tooltip: l10n.hudPause,
           onPressed: onPause,
           icon: const Icon(Icons.pause),
         ),
@@ -438,7 +465,7 @@ class _OverlayCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              entry.key,
+                              entry.key.toUpperCase(),
                               style: const TextStyle(
                                 fontSize: 10,
                                 color: Palette.neutral500,
@@ -464,11 +491,11 @@ class _OverlayCard extends StatelessWidget {
                   children: [
                     TextButton(
                       onPressed: secondary.$2,
-                      child: Text(secondary.$1),
+                      child: Text(secondary.$1.toUpperCase()),
                     ),
                     FilledButton(
                       onPressed: primary.$2,
-                      child: Text(primary.$1),
+                      child: Text(primary.$1.toUpperCase()),
                     ),
                   ],
                 ),

@@ -39,6 +39,7 @@ describe("GET /api/puzzles/:id", () => {
     const app = await buildApp();
     const response = await app.inject({ method: "GET", url: `/api/puzzles/${randomUUID()}` });
     expect(response.statusCode).toBe(404);
+    expect(response.json().code).toBe("NOT_FOUND");
   });
 });
 
@@ -64,6 +65,7 @@ describe("POST /api/puzzles/:id/validate", () => {
       payload: { board: "too-short" },
     });
     expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("VALIDATION_FAILED");
   });
 });
 
@@ -104,7 +106,9 @@ describe("POST /api/puzzles/:id/validate — completion recording", () => {
     expect(response.statusCode).toBe(200);
 
     const user = await prisma.user.findUnique({ where: { email } });
-    const completions = await prisma.puzzleCompletion.findMany({ where: { puzzleId: puzzle.id, userId: user!.id } });
+    const completions = await prisma.puzzleCompletion.findMany({
+      where: { puzzleId: puzzle.id, userId: user!.id },
+    });
     expect(completions).toHaveLength(1);
     expect(completions[0]).toMatchObject({ timeSeconds: 42, mistakeCount: 1, maxCombo: 5 });
 
