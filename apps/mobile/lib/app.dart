@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/appearance_controller.dart';
 import 'core/locale_controller.dart';
 import 'core/theme.dart';
 import 'features/menu/language_screen.dart';
@@ -13,10 +14,12 @@ class SudokuApp extends StatelessWidget {
     super.key,
     required this.apiClient,
     required this.localeController,
+    required this.appearanceController,
   });
 
   final ApiClient apiClient;
   final LocaleController localeController;
+  final AppearanceController appearanceController;
 
   @override
   Widget build(BuildContext context) {
@@ -24,11 +27,16 @@ class SudokuApp extends StatelessWidget {
       providers: [
         Provider<ApiClient>.value(value: apiClient),
         ChangeNotifierProvider<LocaleController>.value(value: localeController),
+        ChangeNotifierProvider<AppearanceController>.value(
+          value: appearanceController,
+        ),
       ],
-      child: Consumer<LocaleController>(
-        builder: (context, locale, _) => MaterialApp(
+      child: Consumer2<LocaleController, AppearanceController>(
+        builder: (context, locale, appearance, _) => MaterialApp(
           title: 'Sudoku 2077',
-          theme: buildTheme(),
+          theme: buildTheme(Palette.day),
+          darkTheme: buildTheme(Palette.night),
+          themeMode: appearance.themeMode,
           locale: locale.locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

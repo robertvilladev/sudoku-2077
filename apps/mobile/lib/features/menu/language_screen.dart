@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/appearance_controller.dart';
 import '../../core/locale_controller.dart';
+import '../../core/signal_text.dart';
 import '../../core/theme.dart';
 import '../../l10n/l10n.dart';
+import 'wordmark.dart';
 
 /// First launch only: shown before the title screen until the player confirms a language.
 /// A tap applies the language at once, so the screen already reads in it.
@@ -13,7 +16,8 @@ class LanguageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    const muted = TextStyle(fontSize: 12, color: Palette.neutral500);
+    final p = context.palette;
+    final muted = TextStyle(fontSize: 12, color: p.neutral500);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -27,28 +31,16 @@ class LanguageScreen extends StatelessWidget {
                 children: [
                   Text(
                     '> > ${l10n.languageBootLine}'.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Palette.neutral500,
-                    ),
+                    style: TextStyle(fontSize: 11, color: p.neutral600),
                   ),
-                  const Text(
-                    'SUDOKU 2077',
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
-                  ),
+                  const Wordmark(fontSize: 26),
                   Text(
                     l10n.languagePickerTitle.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: displayStyle(16, color: p.given),
                   ),
                   Text(l10n.languagePickerPrompt, style: muted),
                   const LanguageList(),
                   FilledButton(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                    ),
                     onPressed: context.read<LocaleController>().confirmChoice,
                     child: Text(l10n.actionConfirm.toUpperCase()),
                   ),
@@ -67,7 +59,8 @@ class LanguageScreen extends StatelessWidget {
   }
 }
 
-/// Title menu → OPTIONS. Language only for now; the Phase 5.5 settings join it later.
+/// Title menu → OPTIONS, also reached from the pause card. Everything applies on tap. The Phase 5.5
+/// settings (sound, effects, haptics…) join it together with the behaviour they switch.
 class OptionsScreen extends StatelessWidget {
   const OptionsScreen({super.key});
 
@@ -80,17 +73,109 @@ class OptionsScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsetsDirectional.all(16),
           children: [
-            Text(
-              l10n.settingLanguage.toUpperCase(),
-              style: const TextStyle(
-                fontSize: 11,
-                letterSpacing: 1.6,
-                color: Palette.accent,
+            SectionLabel(l10n.settingLanguage),
+            const LanguageList(),
+            const SizedBox(height: 24),
+            SectionLabel(l10n.settingAppearance),
+            const _AppearancePicker(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// An uppercase section eyebrow in the signal role.
+class SectionLabel extends StatelessWidget {
+  const SectionLabel(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: 10),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: SignalText(
+          text.toUpperCase(),
+          style: const TextStyle(fontSize: 11, letterSpacing: 1.6),
+        ),
+      ),
+    );
+  }
+}
+
+class _AppearancePicker extends StatelessWidget {
+  const _AppearancePicker();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<AppearanceController>();
+    final l10n = context.l10n;
+    final labels = {
+      Appearance.night: l10n.settingThemeNight,
+      Appearance.day: l10n.settingThemeDay,
+      Appearance.system: l10n.settingThemeSystem,
+    };
+    return Row(
+      spacing: 8,
+      children: [
+        for (final entry in labels.entries)
+          Expanded(
+            child: _Choice(
+              key: ValueKey('appearance-${entry.key.name}'),
+              label: entry.value.toUpperCase(),
+              selected: controller.appearance == entry.key,
+              onTap: () => controller.setAppearance(entry.key),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _Choice extends StatelessWidget {
+  const _Choice({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Semantics(
+      inMutuallyExclusiveGroup: true,
+      checked: selected,
+      button: true,
+      child: Material(
+        color: selected ? p.accent900 : p.surface2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: selected ? p.accent : p.accent800),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(4),
+          onTap: onTap,
+          child: SizedBox(
+            height: 48,
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 1,
+                  color: selected ? p.given : p.neutral400,
+                ),
               ),
             ),
-            const SizedBox(height: 10),
-            const LanguageList(),
-          ],
+          ),
         ),
       ),
     );
@@ -130,18 +215,17 @@ class _LanguageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final code = locale.languageCode;
-    final lit = selected ? Palette.accent300 : Palette.neutral700;
+    final lit = selected ? p.accent300 : p.neutral700;
     return Semantics(
       inMutuallyExclusiveGroup: true,
       checked: selected,
       child: Material(
-        color: selected ? Palette.accent900 : Palette.surface,
+        color: selected ? p.accent900 : p.surface2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),
-          side: BorderSide(
-            color: selected ? Palette.accent : Palette.accent800,
-          ),
+          side: BorderSide(color: selected ? p.accent : p.accent800),
         ),
         child: InkWell(
           key: ValueKey('language-$code'),
@@ -159,7 +243,7 @@ class _LanguageTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: selected ? Palette.accent : Palette.neutral700,
+                        color: selected ? p.accent : p.neutral700,
                       ),
                       borderRadius: BorderRadius.circular(3),
                     ),
@@ -169,16 +253,17 @@ class _LanguageTile extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         letterSpacing: 1.5,
-                        color: selected
-                            ? Palette.accent300
-                            : Palette.neutral500,
+                        color: selected ? p.accent300 : p.neutral500,
                       ),
                     ),
                   ),
                   Expanded(
                     child: Text(
                       languageNames[code] ?? code,
-                      style: const TextStyle(fontSize: 16),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: selected ? p.given : p.text,
+                      ),
                     ),
                   ),
                   Container(

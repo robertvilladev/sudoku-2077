@@ -43,6 +43,11 @@ class _DigitButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null && remaining > 0;
+    final p = context.palette;
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(4),
+      side: BorderSide(color: p.accent800),
+    );
     return Semantics(
       button: true,
       enabled: enabled,
@@ -51,28 +56,29 @@ class _DigitButton extends StatelessWidget {
       child: Opacity(
         opacity: enabled ? 1 : 0.45,
         child: Material(
-          color: Palette.surface,
-          borderRadius: BorderRadius.circular(6),
+          color: p.surface2,
+          shape: shape,
           child: InkWell(
             key: ValueKey('digit-$digit'),
-            borderRadius: BorderRadius.circular(6),
+            customBorder: shape,
             onTap: enabled ? onPressed : null,
             child: SizedBox(
               height: 56,
               child: Stack(
                 children: [
                   Center(
-                    child: Text('$digit', style: const TextStyle(fontSize: 22)),
+                    child: Text(
+                      '$digit',
+                      style: weighted(FontWeight.w500)
+                          .copyWith(fontSize: 22, color: p.accent300),
+                    ),
                   ),
-                  Positioned(
+                  PositionedDirectional(
                     top: 3,
-                    right: 5,
+                    end: 5,
                     child: Text(
                       '$remaining',
-                      style: const TextStyle(
-                        fontSize: 9,
-                        color: Palette.neutral500,
-                      ),
+                      style: TextStyle(fontSize: 9, color: p.neutral500),
                     ),
                   ),
                 ],
@@ -138,20 +144,22 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton(
+    final p = context.palette;
+    return OutlinedButton(
       onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: highlighted ? Palette.accent : Palette.surface,
-        foregroundColor: highlighted ? Palette.bg : Palette.text,
+      style: OutlinedButton.styleFrom(
+        backgroundColor: highlighted ? p.accent : p.surface2,
+        foregroundColor: highlighted ? p.onAccent : p.text,
+        side: BorderSide(color: highlighted ? p.accent : p.accent800),
         minimumSize: const Size.fromHeight(56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        padding: EdgeInsets.zero,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 18),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 11)),
+          Text(label, style: const TextStyle(fontSize: 11, letterSpacing: 1.2)),
         ],
       ),
     );

@@ -1,14 +1,18 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/signal_text.dart';
 import '../../../core/theme.dart';
 import '../../../domain/sudoku.dart';
 import '../../../l10n/l10n.dart';
+import '../../menu/language_screen.dart';
 import '../data/api_client.dart';
 import '../data/puzzle_dto.dart';
 import '../state/board_state.dart';
+import 'decrypt_loader.dart';
 import 'number_pad.dart';
 import 'sudoku_grid.dart';
 
@@ -118,19 +122,25 @@ class _BoardScreenState extends State<BoardScreen> {
   Future<bool> _confirmQuit() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l10n.abortRunTitle.toUpperCase()),
-        content: Text(context.l10n.abortRunBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.actionStay.toUpperCase()),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.all(24),
+        child: OverlayCard(
+          title: context.l10n.abortRunTitle.toUpperCase(),
+          body: context.l10n.abortRunBody,
+          primary: (
+            context.l10n.actionStay,
+            () => Navigator.pop(context, false),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.actionQuit.toUpperCase()),
-          ),
-        ],
+          secondaries: [
+            (
+              context.l10n.actionQuit,
+              () => Navigator.pop(context, true),
+              danger: true,
+            ),
+          ],
+        ),
       ),
     );
     return confirmed ?? false;
@@ -143,6 +153,10 @@ class _BoardScreenState extends State<BoardScreen> {
       builder: (_) => BoardScreen(difficulty: widget.difficulty),
     ),
   );
+
+  void _openOptions() =>
+      Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => const OptionsScreen()));
 
   @override
   Widget build(BuildContext context) {
@@ -159,45 +173,43 @@ class _BoardScreenState extends State<BoardScreen> {
   Widget _buildBody() {
     final board = _board;
     final l10n = context.l10n;
+    final p = context.palette;
     if (_loadError != null) {
-      return _Centered(
-        children: [
-          Text(
-            l10n.puzzleConnectionLost.toUpperCase(),
-            style: const TextStyle(fontSize: 20),
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsetsDirectional.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 320),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 14,
+              children: [
+                Text(
+                  l10n.puzzleConnectionLost.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: displayStyle(20, color: p.error),
+                ),
+                Text(
+                  loadErrorMessage(l10n, _loadError!),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: p.neutral400),
+                ),
+                const SizedBox(height: 4),
+                FilledButton(
+                  onPressed: _load,
+                  child: Text(l10n.actionRetry.toUpperCase()),
+                ),
+                OutlinedButton(
+                  onPressed: _toMenu,
+                  child: Text(l10n.actionMenu.toUpperCase()),
+                ),
+              ],
+            ),
           ),
-          Text(
-            loadErrorMessage(l10n, _loadError!),
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Palette.neutral500),
-          ),
-          FilledButton(
-            onPressed: _load,
-            child: Text(l10n.actionRetry.toUpperCase()),
-          ),
-          TextButton(
-            onPressed: _toMenu,
-            child: Text(l10n.actionMenu.toUpperCase()),
-          ),
-        ],
+        ),
       );
     }
-    if (board == null) {
-      return _Centered(
-        children: [
-          const CircularProgressIndicator(),
-          Text(
-            l10n.puzzleDecrypting.toUpperCase(),
-            style: const TextStyle(fontSize: 18),
-          ),
-          Text(
-            l10n.puzzleColdStartHint,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Palette.neutral500, fontSize: 12),
-          ),
-        ],
-      );
-    }
+    if (board == null) return const DecryptLoader();
 
     return ChangeNotifierProvider.value(
       value: board,
@@ -209,77 +221,92 @@ class _BoardScreenState extends State<BoardScreen> {
               board.boardString == _validatedBoard;
           return Stack(
             children: [
-              Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 520),
-                    child: Column(
-                      spacing: 14,
-                      children: [
-                        _Hud(
-                          difficulty: widget.difficulty,
-                          elapsedSeconds: _elapsedSeconds,
-                          mistakeCount: board.mistakeCount,
-                          combo: board.combo,
-                          onPause: () => setState(() => _paused = true),
-                        ),
-                        if (_validateFailed)
-                          _Banner(
-                            message: l10n.puzzleValidateError,
-                            actionLabel: l10n.actionRetry.toUpperCase(),
-                            onAction: _validate,
+              ImageFiltered(
+                enabled: _paused && !_isWon && !board.isGameOver,
+                imageFilter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsetsDirectional.all(16),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: Column(
+                        spacing: 14,
+                        children: [
+                          _Hud(
+                            difficulty: widget.difficulty,
+                            elapsedSeconds: _elapsedSeconds,
+                            mistakeCount: board.mistakeCount,
+                            combo: board.combo,
+                            onPause: () => setState(() => _paused = true),
                           ),
-                        if (showIncorrect)
-                          _Banner(message: l10n.puzzleChecksumFailed),
-                        const SudokuGrid(),
-                        const NumberPad(),
-                        const ActionRow(),
-                      ],
+                          if (_validateFailed)
+                            _Banner(
+                              message: l10n.puzzleValidateError,
+                              actionLabel: l10n.actionRetry.toUpperCase(),
+                              onAction: _validate,
+                            ),
+                          if (showIncorrect)
+                            _Banner(message: l10n.puzzleChecksumFailed),
+                          const SudokuGrid(),
+                          const NumberPad(),
+                          const ActionRow(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
               if (_isWon)
-                _OverlayCard(
-                  badge: l10n.puzzleClearedBadge,
-                  title: l10n.puzzleClearedTitle.toUpperCase(),
-                  titleColor: Palette.win,
-                  stats: {
-                    l10n.statTime: formatTime(_elapsedSeconds),
-                    l10n.statMistakes: '${board.mistakeCount}',
-                    l10n.statMaxCombo: '×${board.maxCombo}',
-                  },
-                  secondary: (l10n.actionMenu, _toMenu),
-                  primary: (l10n.actionNextPuzzle, _nextPuzzle),
+                _Scrim(
+                  child: OverlayCard(
+                    badge: l10n.puzzleClearedBadge,
+                    badgeIsSignal: true,
+                    title: l10n.puzzleClearedTitle.toUpperCase(),
+                    titleColor: p.win,
+                    stats: {
+                      l10n.statTime: formatTime(_elapsedSeconds),
+                      l10n.statMistakes: '${board.mistakeCount}',
+                      l10n.statMaxCombo: '×${board.maxCombo}',
+                    },
+                    primary: (l10n.actionNextPuzzle, _nextPuzzle),
+                    secondaries: [(l10n.actionMenu, _toMenu, danger: false)],
+                  ),
                 )
               else if (board.isGameOver)
-                _OverlayCard(
-                  badge: l10n.puzzleFailedBadge,
-                  title: l10n.puzzleFailedTitle.toUpperCase(),
-                  titleColor: Palette.error,
-                  stats: {
-                    l10n.statTime: formatTime(_elapsedSeconds),
-                    l10n.statDifficulty: widget.difficulty.label(l10n),
-                  },
-                  secondary: (l10n.actionMenu, _toMenu),
-                  primary: (l10n.actionRetry, _nextPuzzle),
+                _Scrim(
+                  child: OverlayCard(
+                    badge: l10n.puzzleFailedBadge,
+                    badgeColor: p.error,
+                    title: l10n.puzzleFailedTitle.toUpperCase(),
+                    titleColor: p.error,
+                    stats: {
+                      l10n.statTime: formatTime(_elapsedSeconds),
+                      l10n.statDifficulty: widget.difficulty.label(l10n),
+                    },
+                    primary: (l10n.actionRetry, _nextPuzzle),
+                    secondaries: [(l10n.actionMenu, _toMenu, danger: false)],
+                  ),
                 )
               else if (_paused)
-                _OverlayCard(
-                  badge: l10n.puzzlePausedBadge,
-                  title: l10n.puzzlePausedTitle.toUpperCase(),
-                  titleColor: Palette.text,
-                  stats: {l10n.statTime: formatTime(_elapsedSeconds)},
-                  secondary: (
-                    l10n.actionQuitToMenu,
-                    () async {
-                      if (await _confirmQuit()) _toMenu();
-                    },
-                  ),
-                  primary: (
-                    l10n.actionResume,
-                    () => setState(() => _paused = false),
+                _Scrim(
+                  child: OverlayCard(
+                    badge: l10n.puzzlePausedBadge,
+                    title: l10n.puzzlePausedTitle.toUpperCase(),
+                    stats: {l10n.statTime: formatTime(_elapsedSeconds)},
+                    primary: (
+                      l10n.actionResume,
+                      () => setState(() => _paused = false),
+                    ),
+                    secondaries: [
+                      (l10n.menuOptions, _openOptions, danger: false),
+                      (
+                        l10n.actionQuitToMenu,
+                        () async {
+                          if (await _confirmQuit()) _toMenu();
+                        },
+                        danger: false,
+                      ),
+                    ],
                   ),
                 ),
             ],
@@ -328,19 +355,20 @@ class _Hud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    const label = TextStyle(fontSize: 10, color: Palette.neutral500);
-    Widget stat(String name, String value, {Color? color}) => Column(
+    final p = context.palette;
+    final value = weighted(FontWeight.w600).copyWith(
+      fontSize: 16,
+      color: p.given,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    Widget stat(String name, Widget child) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(name.toUpperCase(), style: label),
         Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
+          name.toUpperCase(),
+          style: TextStyle(fontSize: 10, letterSpacing: 1, color: p.neutral500),
         ),
+        child,
       ],
     );
 
@@ -349,24 +377,39 @@ class _Hud extends StatelessWidget {
         Expanded(
           child: stat(
             l10n.statTier,
-            difficulty.label(l10n).toUpperCase(),
-            color: Palette.accent300,
+            Text(
+              difficulty.label(l10n).toUpperCase(),
+              style: value.copyWith(color: p.accent300),
+            ),
           ),
         ),
-        Expanded(child: stat(l10n.statTime, formatTime(elapsedSeconds))),
+        Expanded(
+          child: stat(
+            l10n.statTime,
+            Text(formatTime(elapsedSeconds), style: value),
+          ),
+        ),
         Expanded(
           child: stat(
             l10n.statMistakes,
-            '$mistakeCount/$maxMistakes',
-            color: mistakeCount > 0 ? Palette.error : null,
+            Text(
+              '$mistakeCount/$maxMistakes',
+              style: mistakeCount > 0 ? value.copyWith(color: p.error) : value,
+            ),
           ),
         ),
         Expanded(
-          child: stat(l10n.statCombo, '×$combo', color: Palette.accent300),
+          child: stat(l10n.statCombo, SignalText('×$combo', style: value)),
         ),
         IconButton(
           tooltip: l10n.hudPause,
           onPressed: onPause,
+          style: IconButton.styleFrom(
+            side: BorderSide(color: p.accent800),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
           icon: const Icon(Icons.pause),
         ),
       ],
@@ -383,124 +426,51 @@ class _Banner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: 12,
+        vertical: 6,
+      ),
       decoration: BoxDecoration(
-        border: Border.all(color: Palette.error),
-        borderRadius: BorderRadius.circular(6),
+        color: Color.alphaBlend(p.hlConflict, p.surface2),
+        border: Border.all(color: p.error),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: Palette.error, fontSize: 12),
+              style: TextStyle(color: p.error, fontSize: 12),
             ),
           ),
           if (actionLabel != null)
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(foregroundColor: p.error),
+              child: Text(actionLabel!),
+            ),
         ],
       ),
     );
   }
 }
 
-class _OverlayCard extends StatelessWidget {
-  const _OverlayCard({
-    required this.badge,
-    required this.title,
-    required this.titleColor,
-    required this.stats,
-    required this.secondary,
-    required this.primary,
-  });
+class _Scrim extends StatelessWidget {
+  const _Scrim({required this.child});
 
-  final String badge;
-  final String title;
-  final Color titleColor;
-  final Map<String, String> stats;
-  final (String, VoidCallback) secondary;
-  final (String, VoidCallback) primary;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: ColoredBox(
-        color: const Color(0xB3000000),
+        color: context.palette.scrim,
         child: Center(
-          child: Container(
-            margin: const EdgeInsets.all(24),
-            padding: const EdgeInsets.all(20),
-            constraints: const BoxConstraints(maxWidth: 420),
-            decoration: BoxDecoration(
-              color: Palette.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Palette.divider),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 16,
-              children: [
-                Text(
-                  badge,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Palette.neutral500,
-                  ),
-                ),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: titleColor,
-                  ),
-                ),
-                Row(
-                  children: [
-                    for (final entry in stats.entries)
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              entry.key.toUpperCase(),
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Palette.neutral500,
-                              ),
-                            ),
-                            Text(
-                              entry.value,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-                OverflowBar(
-                  alignment: MainAxisAlignment.end,
-                  spacing: 8,
-                  overflowSpacing: 8,
-                  overflowAlignment: OverflowBarAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: secondary.$2,
-                      child: Text(secondary.$1.toUpperCase()),
-                    ),
-                    FilledButton(
-                      onPressed: primary.$2,
-                      child: Text(primary.$1.toUpperCase()),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsetsDirectional.all(24),
+            child: child,
           ),
         ),
       ),
@@ -508,21 +478,163 @@ class _OverlayCard extends StatelessWidget {
   }
 }
 
-class _Centered extends StatelessWidget {
-  const _Centered({required this.children});
+/// The one card behind pause, win, lose and "Abort run?": corner brackets, badge, display title,
+/// optional body and stats, then one yellow primary with the secondaries under it.
+class OverlayCard extends StatelessWidget {
+  const OverlayCard({
+    super.key,
+    this.badge,
+    this.badgeColor,
+    this.badgeIsSignal = false,
+    required this.title,
+    this.titleColor,
+    this.body,
+    this.stats = const {},
+    required this.primary,
+    this.secondaries = const [],
+  });
 
-  final List<Widget> children;
+  final String? badge;
+  final Color? badgeColor;
+  final bool badgeIsSignal;
+  final String title;
+  final Color? titleColor;
+  final String? body;
+  final Map<String, String> stats;
+  final (String, VoidCallback) primary;
+  final List<(String, VoidCallback, {bool danger})> secondaries;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          spacing: 16,
-          children: children,
-        ),
+    final p = context.palette;
+    const badgeStyle = TextStyle(fontSize: 10, letterSpacing: 1.8);
+    Widget bracket({required bool top, required bool start}) =>
+        PositionedDirectional(
+          top: top ? -6 : null,
+          bottom: top ? null : -6,
+          start: start ? -6 : null,
+          end: start ? null : -6,
+          child: Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              border: BorderDirectional(
+                top: top
+                    ? BorderSide(color: p.signalLine, width: 2)
+                    : BorderSide.none,
+                bottom: top
+                    ? BorderSide.none
+                    : BorderSide(color: p.signalLine, width: 2),
+                start: start
+                    ? BorderSide(color: p.signalLine, width: 2)
+                    : BorderSide.none,
+                end: start
+                    ? BorderSide.none
+                    : BorderSide(color: p.signalLine, width: 2),
+              ),
+            ),
+          ),
+        );
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            padding: const EdgeInsetsDirectional.all(20),
+            decoration: BoxDecoration(
+              color: p.surface2,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: p.accent800),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 14,
+              children: [
+                if (badge != null)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: badgeIsSignal
+                        ? SignalText(badge!, style: badgeStyle)
+                        : Text(
+                            badge!,
+                            style: badgeStyle.copyWith(
+                              color: badgeColor ?? p.neutral500,
+                            ),
+                          ),
+                  ),
+                Text(
+                  title,
+                  style: displayStyle(20, color: titleColor ?? p.given),
+                ),
+                if (body != null)
+                  Text(
+                    body!,
+                    style: TextStyle(fontSize: 13, color: p.neutral400),
+                  ),
+                if (stats.isNotEmpty)
+                  Row(
+                    children: [
+                      for (final entry in stats.entries)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                entry.key.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  letterSpacing: 1,
+                                  color: p.neutral500,
+                                ),
+                              ),
+                              Text(
+                                entry.value,
+                                style: weighted(FontWeight.w600)
+                                    .copyWith(fontSize: 16, color: p.given),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                FilledButton(
+                  onPressed: primary.$2,
+                  child: Text(primary.$1.toUpperCase()),
+                ),
+                if (secondaries.isNotEmpty)
+                  Row(
+                    spacing: 8,
+                    children: [
+                      for (final (label, onPressed, danger: danger)
+                          in secondaries)
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: onPressed,
+                            style: danger
+                                ? OutlinedButton.styleFrom(
+                                    foregroundColor: p.error,
+                                    side: BorderSide(color: p.error),
+                                  )
+                                : null,
+                            child: Text(
+                              label.toUpperCase(),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+          bracket(top: true, start: true),
+          bracket(top: true, start: false),
+          bracket(top: false, start: true),
+          bracket(top: false, start: false),
+        ],
       ),
     );
   }

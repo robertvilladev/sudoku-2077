@@ -15,16 +15,16 @@ class DifficultyScreen extends StatelessWidget {
       appBar: AppBar(title: Text(l10n.difficultySelectTitle.toUpperCase())),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsetsDirectional.all(16),
           children: [
             Text(
               l10n.difficultyPrompt,
-              style: const TextStyle(fontSize: 12, color: Palette.neutral500),
+              style: TextStyle(fontSize: 12, color: context.palette.neutral500),
             ),
             const SizedBox(height: 16),
             for (final difficulty in Difficulty.values)
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsetsDirectional.only(bottom: 12),
                 child: _TierCard(difficulty: difficulty),
               ),
           ],
@@ -42,32 +42,59 @@ class _TierCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final p = context.palette;
+    final level = Difficulty.values.indexOf(difficulty) + 1;
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(4),
+      side: BorderSide(color: p.accent800),
+    );
     return Material(
-      color: Palette.surface,
-      borderRadius: BorderRadius.circular(14),
+      color: p.surface2,
+      shape: shape,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        customBorder: shape,
+        overlayColor: WidgetStatePropertyAll(p.hlSel),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => BoardScreen(difficulty: difficulty),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 8,
+          padding: const EdgeInsetsDirectional.all(16),
+          child: Row(
             children: [
-              Text(
-                difficulty.label(l10n).toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 6,
+                  children: [
+                    Text(
+                      difficulty.label(l10n).toUpperCase(),
+                      style: displayStyle(15, color: p.given),
+                    ),
+                    Text(
+                      difficulty.codename(l10n),
+                      style: TextStyle(
+                        fontSize: 11,
+                        letterSpacing: 1.8,
+                        color: p.accent300,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                difficulty.codename(l10n),
-                style: const TextStyle(fontSize: 11, color: Palette.accent300),
+              ExcludeSemantics(
+                child: Row(
+                  spacing: 3,
+                  children: [
+                    for (var i = 1; i <= Difficulty.values.length; i++)
+                      Container(
+                        width: 7,
+                        height: 16,
+                        color: i <= level ? p.accent : p.accent800,
+                      ),
+                  ],
+                ),
               ),
             ],
           ),

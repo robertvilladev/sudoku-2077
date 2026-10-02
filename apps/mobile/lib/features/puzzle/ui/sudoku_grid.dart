@@ -5,6 +5,7 @@ import '../../../core/theme.dart';
 import '../../../domain/sudoku.dart';
 import '../../../l10n/l10n.dart';
 import '../state/board_state.dart';
+import 'cell_style.dart';
 
 class SudokuGrid extends StatelessWidget {
   const SudokuGrid({super.key});
@@ -37,20 +38,23 @@ class SudokuGrid extends StatelessWidget {
     );
 
     Widget box(int boxRow, int boxCol) => Expanded(
-      child: Column(
-        spacing: 1,
-        children: [
-          for (var r = 0; r < 3; r++)
-            Expanded(
-              child: Row(
-                spacing: 1,
-                children: [
-                  for (var c = 0; c < 3; c++)
-                    cell((boxRow * 3 + r) * 9 + boxCol * 3 + c),
-                ],
+      child: ColoredBox(
+        color: context.palette.lineThin,
+        child: Column(
+          spacing: 1,
+          children: [
+            for (var r = 0; r < 3; r++)
+              Expanded(
+                child: Row(
+                  spacing: 1,
+                  children: [
+                    for (var c = 0; c < 3; c++)
+                      cell((boxRow * 3 + r) * 9 + boxCol * 3 + c),
+                  ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
 
@@ -59,8 +63,8 @@ class SudokuGrid extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: Palette.neutral700,
-          borderRadius: BorderRadius.circular(6),
+          color: context.palette.accent700,
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Column(
           spacing: 2,
@@ -104,18 +108,14 @@ class _SudokuCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = isSelected
-        ? Palette.accent800
-        : isSameValue
-        ? Palette.accent900
-        : isPeer
-        ? const Color(0xFF1D1F2E)
-        : Palette.bg;
-    final foreground = isConflict
-        ? Palette.error
-        : isGiven
-        ? Palette.text
-        : Palette.accent300;
+    final style = cellStyleFor(
+      context.palette,
+      isGiven: isGiven,
+      isSelected: isSelected,
+      isPeer: isPeer,
+      isSameValue: isSameValue,
+      isConflict: isConflict,
+    );
 
     final row = index ~/ 9 + 1;
     final col = index % 9 + 1;
@@ -135,29 +135,32 @@ class _SudokuCell extends StatelessWidget {
         key: ValueKey('cell-$index'),
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: ColoredBox(
-          color: background,
-          child: value != 0
-              ? Center(
-                  child: FittedBox(
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Text(
-                        '$value',
-                        style: TextStyle(
-                          fontSize: 22,
-                          color: foreground,
-                          fontWeight: isGiven
-                              ? FontWeight.w700
-                              : FontWeight.w400,
+        child: DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            border: style.border == null
+                ? null
+                : Border.all(color: style.border!, width: style.borderWidth),
+          ),
+          child: ColoredBox(
+            color: style.background,
+            child: value != 0
+                ? Center(
+                    child: FittedBox(
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Text(
+                          '$value',
+                          style: weighted(style.weight)
+                              .copyWith(fontSize: 22, color: style.digit),
                         ),
                       ),
                     ),
-                  ),
-                )
-              : notes.isEmpty
-              ? const SizedBox.expand()
-              : _NotesGrid(notes: notes),
+                  )
+                : notes.isEmpty
+                ? const SizedBox.expand()
+                : _NotesGrid(notes: notes),
+          ),
         ),
       ),
     );
@@ -185,9 +188,9 @@ class _NotesGrid extends StatelessWidget {
                         child: FittedBox(
                           child: Text(
                             notes.contains(r * 3 + c) ? '${r * 3 + c}' : '',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 9,
-                              color: Palette.neutral500,
+                              color: context.palette.neutral500,
                             ),
                           ),
                         ),

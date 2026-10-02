@@ -79,6 +79,10 @@
   "settingAutoClearNotes": "Effacement auto des notes",
   "settingHum": "Bourdonnement d'ambiance",
   "settingLanguage": "Langue",
+  "settingAppearance": "Apparence",
+  "settingThemeNight": "Nuit",
+  "settingThemeDay": "Jour",
+  "settingThemeSystem": "Système",
   "settingOn": "Oui",
   "settingOff": "Non",
 

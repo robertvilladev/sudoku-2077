@@ -79,6 +79,10 @@
   "settingAutoClearNotes": "Esborrar notes automàticament",
   "settingHum": "Brunzit ambiental",
   "settingLanguage": "Idioma",
+  "settingAppearance": "Aparença",
+  "settingThemeNight": "Nit",
+  "settingThemeDay": "Dia",
+  "settingThemeSystem": "Sistema",
   "settingOn": "Sí",
   "settingOff": "No",
 

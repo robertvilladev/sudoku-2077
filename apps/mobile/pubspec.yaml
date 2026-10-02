@@ -59,6 +59,14 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   generate: true
+  fonts:
+    # SIL Open Font License 1.1; licences in assets/fonts/OFL-*.txt. Both are variable fonts.
+    - family: Orbitron
+      fonts:
+        - asset: assets/fonts/Orbitron[wght].ttf
+    - family: Oxanium
+      fonts:
+        - asset: assets/fonts/Oxanium[wght].ttf
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
